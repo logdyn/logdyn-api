@@ -82,6 +82,7 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 		//get timestamp first in order to have most accurate time.
 		this.timestamp = jsonObject.optLong(LogMessage.TIMESTAMP_LABEL, System.currentTimeMillis());
 		this.sessionId = jsonObject.optString(LogMessage.SESSION_ID_LABEL, null);
+		this.message = jsonObject.optString(LogMessage.MESSAGE_LABEL, null);
 		this.level = LogMessage.parseLevel(jsonObject);
 	}
 	
