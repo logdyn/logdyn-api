@@ -1,0 +1,11 @@
+language: java
+jdk:
+  - oraclejdk7
+script: mvn test -f logdyn-api/pom.xml
+notifications:
+  email: false
+  slack:
+    rooms:
+      - logdyn:9qZ6ePeSUH06FbQuBwS7r9Ll#github
+    on_success: change
+    on_failure: always
