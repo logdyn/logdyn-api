@@ -1,7 +1,7 @@
 language: java
 jdk:
   - oraclejdk7
-script: mvn test -f ymca/pom.xml
+script: mvn test -f logdyn-api/pom.xml
 notifications:
   email: false
   slack:
@@ -9,4 +9,3 @@ notifications:
       - logdyn:9qZ6ePeSUH06FbQuBwS7r9Ll#github
     on_success: change
     on_failure: always
-    
