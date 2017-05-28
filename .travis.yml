@@ -1,7 +1,6 @@
 language: java
 jdk:
   - oraclejdk7
-script: mvn test -f logdyn-api/pom.xml
 notifications:
   email: false
   slack:
