@@ -1,15 +1,12 @@
 package com.github.logdyn.model;
 
-import java.util.logging.Level;
-
-import javax.servlet.http.HttpServletRequest;
-
-import org.apache.commons.lang3.builder.CompareToBuilder;
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONString;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.Objects;
+import java.util.logging.Level;
 
 /**
  * Java object containing message details: sessionId, level, message, timestamp
@@ -76,7 +73,7 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 	{
 		this(sessionId, level, message, System.currentTimeMillis());
 	}
-	
+
 	public LogMessage(final JSONObject jsonObject) throws JSONException
 	{
 		//get timestamp first in order to have most accurate time.
@@ -86,7 +83,7 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 		this.level = LogMessage.parseLevel(jsonObject);
 	}
 	
-	private static final Level parseLevel(final JSONObject jsonObject)
+	private static Level parseLevel(final JSONObject jsonObject)
 	{
 		final String levelName = jsonObject.optString(LogMessage.LEVEL_LABEL);
 		switch (levelName)
@@ -153,11 +150,30 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 	@Override
 	public int compareTo(final LogMessage other)
 	{
-		return new CompareToBuilder()
-			.append(this.timestamp, other.timestamp)
-			.append(this.level.intValue(), other.level.intValue())
-			.append(this.message, other.message)
-			.toComparison();
+		int result;
+		if (other != null)
+		{
+			result = Long.compare(this.timestamp, other.timestamp);
+			if (result == 0)
+			{
+				result = Integer.compare(this.level.intValue(), other.level.intValue());
+				if (result == 0)
+				{
+					//noinspection StringEquality
+					result = (this.sessionId == other.sessionId) ? 0 : (this.sessionId == null ? -1 : this.sessionId.compareTo(other.sessionId));
+					if (result == 0)
+					{
+						result = this.message.compareTo(other.message);
+					}
+				}
+			}
+		}
+		else
+		{
+			// if other == null then return -1
+			result = -1;
+		}
+		return result;
 	}
 
 	@Override
@@ -189,13 +205,11 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 	{
 		if (this.hashCode == -1)
 		{
-			this.hashCode = new HashCodeBuilder()
-				.appendSuper(super.hashCode())
-				.append(this.timestamp)
-				.append(this.message)
-				.append(this.sessionId)
-				.append(this.level)
-				.toHashCode();
+			this.hashCode = Objects.hash(
+					Long.valueOf(this.timestamp),
+					this.message,
+					this.sessionId,
+					this.level);
 		}
 		return this.hashCode;
 	}
@@ -206,20 +220,25 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 	@Override
 	public boolean equals(final Object other)
 	{
-		if (other instanceof LogMessage)
+		if (other == this)
 		{
-			final LogMessage otherMessage = (LogMessage) other;
-			return new EqualsBuilder()
-				.appendSuper(super.equals(other))
-				.append(this.timestamp, otherMessage.timestamp)
-				.append(this.message, otherMessage.message)
-				.append(this.sessionId, otherMessage.sessionId)
-				.append(this.level, otherMessage.level)
-				.isEquals();
+			return true;
+		}
+		else if (other == null)
+		{
+			return false;
+		}
+		else if (!(other instanceof LogMessage))
+		{
+			return false;
 		}
 		else
 		{
-			return false;
+			final LogMessage otherMessage = (LogMessage) other;
+			return this.timestamp == otherMessage.timestamp
+					&& this.message.equals(otherMessage.message)
+					&& Objects.equals(this.sessionId, otherMessage.sessionId)// use Objects.equals as sessionId can be null
+					&& this.level.equals(otherMessage.level);
 		}
 	}
 }
