@@ -1,19 +1,25 @@
 package com.github.logdyn.model;
 
+import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+
+import javax.servlet.http.HttpServletRequest;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONString;
-
-import javax.servlet.http.HttpServletRequest;
-import java.util.Objects;
-import java.util.logging.Level;
 
 /**
  * Java object containing message details: sessionId, level, message, timestamp
  * @author jsjlewis96
  */
-public class LogMessage implements Comparable<LogMessage>, JSONString
+public class LogMessage extends LogRecord implements Comparable<LogMessage>, JSONString
 {
+
+	/** Generated serialID **/
+	private static final long serialVersionUID = -9093297911420796177L;
+	
 	private static final String TIMESTAMP_LABEL = "timestamp";
 	private static final String MESSAGE_LABEL = "message";
 	private static final String LEVEL_LABEL = "level";
@@ -74,13 +80,35 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 		this(sessionId, level, message, System.currentTimeMillis());
 	}
 
+	/**
+	 * Constructor
+	 * Takes a JSONObject
+	 * @param jsonObject The JSONObject
+	 * @throws JSONException
+	 */
 	public LogMessage(final JSONObject jsonObject) throws JSONException
 	{
-		//get timestamp first in order to have most accurate time.
-		this.timestamp = jsonObject.optLong(LogMessage.TIMESTAMP_LABEL, System.currentTimeMillis());
-		this.sessionId = jsonObject.optString(LogMessage.SESSION_ID_LABEL, null);
-		this.message = jsonObject.optString(LogMessage.MESSAGE_LABEL, null);
-		this.level = LogMessage.parseLevel(jsonObject);
+		this(jsonObject.optString(LogMessage.SESSION_ID_LABEL, null),
+				LogMessage.parseLevel(jsonObject),
+				jsonObject.optString(LogMessage.MESSAGE_LABEL, null),
+				jsonObject.optLong(LogMessage.TIMESTAMP_LABEL, System.currentTimeMillis()));
+	}
+
+	/**
+	 * Constructor
+	 * Ideally other constructors should be used
+	 * @param sessionId The HttpSessionId
+	 * @param level The log level, see {@link java.util.logging.Level}
+	 * @param message The message to be displayed
+	 * @param timestamp The timestamp the message is logged at (in milliseconds)
+	 */
+	public LogMessage(final String sessionId, final Level level, final String message, final long timestamp)
+	{
+		super(level, message);
+		this.sessionId = sessionId;
+		this.level = level;
+		this.message = message;
+		this.timestamp = timestamp;
 	}
 	
 	private static Level parseLevel(final JSONObject jsonObject)
@@ -97,22 +125,6 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 			default:
 				return Level.parse(levelName);
 		}
-	}
-	
-	/**
-	 * Constructor
-	 * Ideally other constructors should be used
-	 * @param sessionId The HttpSessionId
-	 * @param level The log level, see {@link java.util.logging.Level}
-	 * @param message The message to be displayed
-	 * @param timestamp The timestamp the message is logged at (in milliseconds)
-	 */
-	public LogMessage(final String sessionId, final Level level, final String message, final long timestamp)
-	{
-		this.sessionId = sessionId;
-		this.level = level;
-		this.message = message;
-		this.timestamp = timestamp;
 	}
 
 	/**
