@@ -1,39 +1,20 @@
 # logdyn - master branch:  [![Build Status](https://travis-ci.org/logdyn/logdyn-api.svg?branch=master)](https://travis-ci.org/logdyn/logdyn-api)
 
-## Welcome to GitHub Pages
+# General Information
+This API is designed to enable easy logging to and from a server and clients. It was developed as part of a college project (see [the repository here](https://github.com/logdyn/yeovil_microsoft_cognitive_ai) or [the hosted implementation here](https://mattihew.servehttp.com/ymca/)) and the functionality was extracted to make this API.
 
-You can use the [editor on GitHub](https://github.com/logdyn/logdyn-api/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+## Features
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+- Can log to a specific session or to all sessions
+- Can log from server to client or vice-versa
+- Log messages include severity
+- Previously logged messages for a session are stored so they can be viewed in any new instance of that sesison
+- Exceptions in the program are automatically logged
+- Severe messages log to all sessions
+- Includes example client-side implementation
+- Easy to filter
+- Works with existing `java.util.logging.Level` levels
 
-### Markdown
+## Technologies
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/logdyn/logdyn-api/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+This API uses the `javax.websocket`, `javax.servlet.http`, and `org.json` libraries, as well as the Apache commons-lang3 library.
