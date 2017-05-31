@@ -11,6 +11,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 import javax.websocket.CloseReason;
 import javax.websocket.Endpoint;
@@ -118,7 +119,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	}
 
 	/**
-	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogMessage, boolean)}
+	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogMessage, boolean)}, defaults to queueing the message
 	 * @param logMessage The {@link LogMessage} to log
 	 */
 	public static void log(final LogMessage logMessage)
@@ -175,6 +176,25 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		{
 			System.out.println(logMessage);
 		}
+	}
+	
+	/**
+	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogRecord, boolean)}, defaults to queueing the message
+	 * @param logRecord The {@link LogRecord} to log, acts as a LogMessage with a {@code null} httpSessionId
+	 */
+	public void log(LogRecord logRecord)
+	{
+		LoggingEndpoint.log(new LogMessage(null, logRecord.getLevel(), logRecord.getMessage(), logRecord.getMillis()));
+	}
+	
+	/**
+	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogRecord, boolean)}
+	 * @param logRecord The {@link LogRecord} to log, acts as a LogMessage with a {@code null} httpSessionId
+	 * @param queue If false does not queue the message for storage, if always true log(LogRecord) can be used
+	 */
+	public void log(final LogRecord logRecord, final boolean queue)
+	{
+		LoggingEndpoint.log(new LogMessage(null, logRecord.getLevel(), logRecord.getMessage(), logRecord.getMillis()), queue);
 	}
 
 	private static void queueMessageToAll(final LogMessage logMessage)

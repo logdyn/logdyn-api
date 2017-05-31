@@ -28,9 +28,6 @@ public class LogMessage extends LogRecord implements Comparable<LogMessage>, JSO
 	private static final Level DEFAULT_LEVEL = Level.FINE;
 	
 	private final String sessionId;
-	private final Level level;
-	private final String message;
-	private final long timestamp;
 	
 	private String jsonString;
 	private int hashCode = -1;
@@ -106,9 +103,7 @@ public class LogMessage extends LogRecord implements Comparable<LogMessage>, JSO
 	{
 		super(level, message);
 		this.sessionId = sessionId;
-		this.level = level;
-		this.message = message;
-		this.timestamp = timestamp;
+		this.setMillis(timestamp);
 	}
 	
 	private static Level parseLevel(final JSONObject jsonObject)
@@ -135,47 +130,23 @@ public class LogMessage extends LogRecord implements Comparable<LogMessage>, JSO
 		return this.sessionId;
 	}
 
-	/**
-	 * @return the level
-	 */
-	public Level getLevel()
-	{
-		return this.level;
-	}
-
-	/**
-	 * @return the message
-	 */
-	public String getMessage()
-	{
-		return this.message;
-	}
-
-	/**
-	 * @return the timestamp
-	 */
-	public long getTimestamp()
-	{
-		return this.timestamp;
-	}
-
 	@Override
 	public int compareTo(final LogMessage other)
 	{
 		int result;
 		if (other != null)
 		{
-			result = Long.compare(this.timestamp, other.timestamp);
+			result = Long.compare(this.getMillis(), other.getMillis());
 			if (result == 0)
 			{
-				result = Integer.compare(this.level.intValue(), other.level.intValue());
+				result = Integer.compare(this.getLevel().intValue(), other.getLevel().intValue());
 				if (result == 0)
 				{
 					//noinspection StringEquality
 					result = (this.sessionId == other.sessionId) ? 0 : (this.sessionId == null ? -1 : this.sessionId.compareTo(other.sessionId));
 					if (result == 0)
 					{
-						result = this.message.compareTo(other.message);
+						result = this.getMessage().compareTo(other.getMessage());
 					}
 				}
 			}
@@ -195,9 +166,9 @@ public class LogMessage extends LogRecord implements Comparable<LogMessage>, JSO
 		{
 			this.jsonString = new JSONObject()
 				.put(LogMessage.SESSION_ID_LABEL, this.sessionId)
-				.put(LogMessage.LEVEL_LABEL, this.level.getName())
-				.put(LogMessage.MESSAGE_LABEL, this.message)
-				.put(LogMessage.TIMESTAMP_LABEL, Long.valueOf(this.timestamp))
+				.put(LogMessage.LEVEL_LABEL, this.getLevel().getName())
+				.put(LogMessage.MESSAGE_LABEL, this.getMessage())
+				.put(LogMessage.TIMESTAMP_LABEL, Long.valueOf(this.getMillis()))
 				.toString();
 		}
 		return this.jsonString;
@@ -218,10 +189,10 @@ public class LogMessage extends LogRecord implements Comparable<LogMessage>, JSO
 		if (this.hashCode == -1)
 		{
 			this.hashCode = Objects.hash(
-					Long.valueOf(this.timestamp),
-					this.message,
+					Long.valueOf(this.getMillis()),
+					this.getMessage(),
 					this.sessionId,
-					this.level);
+					this.getLevel());
 		}
 		return this.hashCode;
 	}
@@ -247,10 +218,10 @@ public class LogMessage extends LogRecord implements Comparable<LogMessage>, JSO
 		else
 		{
 			final LogMessage otherMessage = (LogMessage) other;
-			return this.timestamp == otherMessage.timestamp
-					&& this.message.equals(otherMessage.message)
+			return this.getMillis() == otherMessage.getMillis()
+					&& this.getMessage().equals(otherMessage.getMessage())
 					&& Objects.equals(this.sessionId, otherMessage.sessionId)// use Objects.equals as sessionId can be null
-					&& this.level.equals(otherMessage.level);
+					&& this.getLevel().equals(otherMessage.getLevel());
 		}
 	}
 }
