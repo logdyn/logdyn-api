@@ -35,7 +35,13 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 {
 
 	private static final Map<String, Set<Session>> ENDPOINTS = new HashMap<>();
-	private static final Map<String, SortedSet<LogMessage>> MESSAGES = new HashMap<>();
+	private static final Map<String, SortedSet<LogRecord>> MESSAGES = new HashMap<>();
+	
+	private static final String TIMESTAMP_LABEL = "timestamp";
+	private static final String MESSAGE_LABEL = "message";
+	private static final String LEVEL_LABEL = "level";
+	private static final String SESSION_ID_LABEL = "sessionId";
+	
 	private Session session;
 	private String httpSessionId;
 
@@ -50,7 +56,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		}
 		catch (IOException ioe)
 		{
-			LoggingEndpoint.logToClient(session, new LogMessage(Level.WARNING, ioe.getMessage()).toJSONString());
+			LoggingEndpoint.logToClient(session, LoggingEndpoint.logRecordToJSON(new LogMessage(Level.WARNING, ioe.getMessage())));
 		}
 	}
 	
@@ -70,7 +76,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			}
 			set.add(this.session);
 			
-			final SortedSet<LogMessage> messageQueue = LoggingEndpoint.MESSAGES.get(this.httpSessionId);
+			final SortedSet<LogRecord> messageQueue = LoggingEndpoint.MESSAGES.get(this.httpSessionId);
 			if (null != messageQueue && !messageQueue.isEmpty())
 			{
 				LoggingEndpoint.logToClient(this.session, new JSONArray(messageQueue).toString());
@@ -89,7 +95,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 				{
 					if (!this.session.equals(websocketSession))
 					{
-						LoggingEndpoint.logToClient(websocketSession, logMessage.toJSONString());
+						LoggingEndpoint.logToClient(websocketSession, LoggingEndpoint.logRecordToJSON(logMessage));
 					}
 				}
 			}
@@ -182,9 +188,9 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogRecord, boolean)}, defaults to queueing the message
 	 * @param logRecord The {@link LogRecord} to log, acts as a LogMessage with a {@code null} httpSessionId
 	 */
-	public void log(LogRecord logRecord)
+	public static void log(LogRecord logRecord)
 	{
-		LoggingEndpoint.log(new LogMessage(null, logRecord.getLevel(), logRecord.getMessage(), logRecord.getMillis()));
+		LoggingEndpoint.log(logRecord, true);
 	}
 	
 	/**
@@ -192,14 +198,32 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 * @param logRecord The {@link LogRecord} to log, acts as a LogMessage with a {@code null} httpSessionId
 	 * @param queue If false does not queue the message for storage, if always true log(LogRecord) can be used
 	 */
-	public void log(final LogRecord logRecord, final boolean queue)
+	public static void log(final LogRecord logRecord, final boolean queue)
 	{
-		LoggingEndpoint.log(new LogMessage(null, logRecord.getLevel(), logRecord.getMessage(), logRecord.getMillis()), queue);
+		for (final Set<Session> websocketSessions : LoggingEndpoint.ENDPOINTS.values())
+		{
+			LoggingEndpoint.logToClient(websocketSessions, logRecord);
+		}
+
+		// Queue message for all sessions
+		if (queue)
+		{
+			LoggingEndpoint.queueMessageToAll(logRecord);
+		}
+		
+		if (logRecord.getLevel().intValue() > Level.WARNING.intValue())
+		{
+			System.err.println(LoggingEndpoint.logRecordToJSON(logRecord));
+		}
+		else
+		{
+			System.out.println(LoggingEndpoint.logRecordToJSON(logRecord));
+		}
 	}
 
 	private static void queueMessageToAll(final LogMessage logMessage)
 	{
-		for (final SortedSet<LogMessage> messageSet : LoggingEndpoint.MESSAGES.values())
+		for (final SortedSet<LogRecord> messageSet : LoggingEndpoint.MESSAGES.values())
 		{
 			messageSet.add(logMessage);
 		}
@@ -214,7 +238,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 */
 	private static void queueMessage(final LogMessage logMessage)
 	{
-		SortedSet<LogMessage> messageQueue = LoggingEndpoint.MESSAGES.get(logMessage.getSessionId());
+		SortedSet<LogRecord> messageQueue = LoggingEndpoint.MESSAGES.get(logMessage.getSessionId());
 
 		if (null == messageQueue)
 		{
@@ -235,7 +259,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	{
 		for (final Session websocketSession : websocketSessions)
 		{
-			LoggingEndpoint.logToClient(websocketSession, message.toJSONString());
+			LoggingEndpoint.logToClient(websocketSession, LoggingEndpoint.logRecordToJSON(message));
 		}
 	}
 
@@ -255,5 +279,15 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	public static void clearSession(final String id)
 	{
 		LoggingEndpoint.MESSAGES.remove(id);
+	}
+	
+	private static String logRecordToJSON(final LogRecord logRecord)
+	{
+		return new JSONObject()
+				.put(LoggingEndpoint.SESSION_ID_LABEL, (String) null)
+				.put(LoggingEndpoint.LEVEL_LABEL, logRecord.getLevel().getName())
+				.put(LoggingEndpoint.MESSAGE_LABEL, logRecord.getMessage())
+				.put(LoggingEndpoint.TIMESTAMP_LABEL, Long.valueOf(logRecord.getMillis()))
+				.toString();
 	}
 }

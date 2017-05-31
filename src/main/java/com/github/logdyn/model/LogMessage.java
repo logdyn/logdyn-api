@@ -8,13 +8,12 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.JSONString;
 
 /**
  * Java object containing message details: sessionId, level, message, timestamp
  * @author jsjlewis96
  */
-public class LogMessage extends LogRecord implements Comparable<LogMessage>, JSONString
+public class LogMessage extends LogRecord implements Comparable<LogMessage>
 {
 
 	/** Generated serialID **/
@@ -28,8 +27,6 @@ public class LogMessage extends LogRecord implements Comparable<LogMessage>, JSO
 	private static final Level DEFAULT_LEVEL = Level.FINE;
 	
 	private final String sessionId;
-	
-	private String jsonString;
 	private int hashCode = -1;
 	
 	/**
@@ -157,27 +154,6 @@ public class LogMessage extends LogRecord implements Comparable<LogMessage>, JSO
 			result = -1;
 		}
 		return result;
-	}
-
-	@Override
-	public String toJSONString()
-	{
-		if (this.jsonString == null)
-		{
-			this.jsonString = new JSONObject()
-				.put(LogMessage.SESSION_ID_LABEL, this.sessionId)
-				.put(LogMessage.LEVEL_LABEL, this.getLevel().getName())
-				.put(LogMessage.MESSAGE_LABEL, this.getMessage())
-				.put(LogMessage.TIMESTAMP_LABEL, Long.valueOf(this.getMillis()))
-				.toString();
-		}
-		return this.jsonString;
-	}
-	
-	@Override
-	public String toString()
-	{
-		return this.toJSONString();
 	}
 
 	/**
