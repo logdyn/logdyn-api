@@ -56,7 +56,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		}
 		catch (IOException ioe)
 		{
-			LoggingEndpoint.logToClient(session, LoggingEndpoint.logRecordToJSON(new LogMessage(Level.WARNING, ioe.getMessage())));
+			LoggingEndpoint.logToClient(session, LoggingEndpoint.logRecordToJSON(new LogRecord(Level.WARNING, ioe.getMessage())));
 		}
 	}
 	
@@ -125,20 +125,11 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	}
 
 	/**
-	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogMessage, boolean)}, defaults to queueing the message
-	 * @param logMessage The {@link LogMessage} to log
-	 */
-	public static void log(final LogMessage logMessage)
-	{
-		LoggingEndpoint.log(logMessage, true);
-	}
-
-	/**
 	 * Logs a message to the endpoint for that message, if no message is specified it will log to all endpoints
 	 * @param logMessage The {@link LogMessage} to log
 	 * @param queue boolean value, if true queue the message
 	 */
-	public static void log(final LogMessage logMessage, final boolean queue)
+	private static void log(final LogMessage logMessage, final boolean queue)
 	{
 		final String sessionId = logMessage.getSessionId();
 		
@@ -221,11 +212,11 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		}
 	}
 
-	private static void queueMessageToAll(final LogMessage logMessage)
+	private static void queueMessageToAll(final LogRecord logRecord)
 	{
 		for (final SortedSet<LogRecord> messageSet : LoggingEndpoint.MESSAGES.values())
 		{
-			messageSet.add(logMessage);
+			messageSet.add(logRecord);
 		}
 	}
 	
@@ -255,7 +246,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 * @param websocketSessions The endpoints to send the message to
 	 * @param message The message
 	 */
-	private static void logToClient(final Collection<Session> websocketSessions, final LogMessage message)
+	private static void logToClient(final Collection<Session> websocketSessions, final LogRecord message)
 	{
 		for (final Session websocketSession : websocketSessions)
 		{
@@ -283,8 +274,15 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	
 	private static String logRecordToJSON(final LogRecord logRecord)
 	{
+		String sessionId = null;
+		
+		if (logRecord instanceof LogMessage)
+		{
+			sessionId = ((LogMessage) logRecord).getSessionId();
+		}
+		
 		return new JSONObject()
-				.put(LoggingEndpoint.SESSION_ID_LABEL, (String) null)
+				.put(LoggingEndpoint.SESSION_ID_LABEL, sessionId)
 				.put(LoggingEndpoint.LEVEL_LABEL, logRecord.getLevel().getName())
 				.put(LoggingEndpoint.MESSAGE_LABEL, logRecord.getMessage())
 				.put(LoggingEndpoint.TIMESTAMP_LABEL, Long.valueOf(logRecord.getMillis()))
