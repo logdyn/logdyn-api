@@ -1,32 +1,24 @@
 package com.github.logdyn.model;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONString;
-
-import javax.servlet.http.HttpServletRequest;
 import java.util.Objects;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * Java object containing message details: sessionId, level, message, timestamp
  * @author jsjlewis96
  */
-public class LogMessage implements Comparable<LogMessage>, JSONString
+public class LogMessage extends LogRecord implements Comparable<LogMessage>
 {
-	private static final String TIMESTAMP_LABEL = "timestamp";
-	private static final String MESSAGE_LABEL = "message";
-	private static final String LEVEL_LABEL = "level";
-	private static final String SESSION_ID_LABEL = "sessionId";
+
+	/** Generated serialID **/
+	private static final long serialVersionUID = -9093297911420796177L;
 	
 	private static final Level DEFAULT_LEVEL = Level.FINE;
 	
 	private final String sessionId;
-	private final Level level;
-	private final String message;
-	private final long timestamp;
-	
-	private String jsonString;
 	private int hashCode = -1;
 	
 	/**
@@ -74,31 +66,6 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 		this(sessionId, level, message, System.currentTimeMillis());
 	}
 
-	public LogMessage(final JSONObject jsonObject) throws JSONException
-	{
-		//get timestamp first in order to have most accurate time.
-		this.timestamp = jsonObject.optLong(LogMessage.TIMESTAMP_LABEL, System.currentTimeMillis());
-		this.sessionId = jsonObject.optString(LogMessage.SESSION_ID_LABEL, null);
-		this.message = jsonObject.optString(LogMessage.MESSAGE_LABEL, null);
-		this.level = LogMessage.parseLevel(jsonObject);
-	}
-	
-	private static Level parseLevel(final JSONObject jsonObject)
-	{
-		final String levelName = jsonObject.optString(LogMessage.LEVEL_LABEL);
-		switch (levelName)
-		{
-			case "":
-				return LogMessage.DEFAULT_LEVEL;
-			case "ERROR": //map javascript error names on to java Levels
-				return Level.SEVERE;
-			case "WARN":
-				return Level.WARNING;
-			default:
-				return Level.parse(levelName);
-		}
-	}
-	
 	/**
 	 * Constructor
 	 * Ideally other constructors should be used
@@ -109,12 +76,11 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 	 */
 	public LogMessage(final String sessionId, final Level level, final String message, final long timestamp)
 	{
+		super(level, message);
 		this.sessionId = sessionId;
-		this.level = level;
-		this.message = message;
-		this.timestamp = timestamp;
+		this.setMillis(timestamp);
 	}
-
+	
 	/**
 	 * @return the sessionId
 	 */
@@ -123,47 +89,23 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 		return this.sessionId;
 	}
 
-	/**
-	 * @return the level
-	 */
-	public Level getLevel()
-	{
-		return this.level;
-	}
-
-	/**
-	 * @return the message
-	 */
-	public String getMessage()
-	{
-		return this.message;
-	}
-
-	/**
-	 * @return the timestamp
-	 */
-	public long getTimestamp()
-	{
-		return this.timestamp;
-	}
-
 	@Override
 	public int compareTo(final LogMessage other)
 	{
 		int result;
 		if (other != null)
 		{
-			result = Long.compare(this.timestamp, other.timestamp);
+			result = Long.compare(this.getMillis(), other.getMillis());
 			if (result == 0)
 			{
-				result = Integer.compare(this.level.intValue(), other.level.intValue());
+				result = Integer.compare(this.getLevel().intValue(), other.getLevel().intValue());
 				if (result == 0)
 				{
 					//noinspection StringEquality
 					result = (this.sessionId == other.sessionId) ? 0 : (this.sessionId == null ? -1 : this.sessionId.compareTo(other.sessionId));
 					if (result == 0)
 					{
-						result = this.message.compareTo(other.message);
+						result = this.getMessage().compareTo(other.getMessage());
 					}
 				}
 			}
@@ -176,27 +118,6 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 		return result;
 	}
 
-	@Override
-	public String toJSONString()
-	{
-		if (this.jsonString == null)
-		{
-			this.jsonString = new JSONObject()
-				.put(LogMessage.SESSION_ID_LABEL, this.sessionId)
-				.put(LogMessage.LEVEL_LABEL, this.level.getName())
-				.put(LogMessage.MESSAGE_LABEL, this.message)
-				.put(LogMessage.TIMESTAMP_LABEL, Long.valueOf(this.timestamp))
-				.toString();
-		}
-		return this.jsonString;
-	}
-	
-	@Override
-	public String toString()
-	{
-		return this.toJSONString();
-	}
-
 	/**
 	 * @see java.lang.Object#hashCode()
 	 */
@@ -206,10 +127,10 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 		if (this.hashCode == -1)
 		{
 			this.hashCode = Objects.hash(
-					Long.valueOf(this.timestamp),
-					this.message,
+					Long.valueOf(this.getMillis()),
+					this.getMessage(),
 					this.sessionId,
-					this.level);
+					this.getLevel());
 		}
 		return this.hashCode;
 	}
@@ -235,10 +156,10 @@ public class LogMessage implements Comparable<LogMessage>, JSONString
 		else
 		{
 			final LogMessage otherMessage = (LogMessage) other;
-			return this.timestamp == otherMessage.timestamp
-					&& this.message.equals(otherMessage.message)
+			return this.getMillis() == otherMessage.getMillis()
+					&& this.getMessage().equals(otherMessage.getMessage())
 					&& Objects.equals(this.sessionId, otherMessage.sessionId)// use Objects.equals as sessionId can be null
-					&& this.level.equals(otherMessage.level);
+					&& this.getLevel().equals(otherMessage.getLevel());
 		}
 	}
 }

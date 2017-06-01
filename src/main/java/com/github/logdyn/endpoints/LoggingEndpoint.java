@@ -11,6 +11,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 import javax.websocket.CloseReason;
 import javax.websocket.Endpoint;
@@ -34,7 +35,15 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 {
 
 	private static final Map<String, Set<Session>> ENDPOINTS = new HashMap<>();
-	private static final Map<String, SortedSet<LogMessage>> MESSAGES = new HashMap<>();
+	private static final Map<String, SortedSet<LogRecord>> MESSAGES = new HashMap<>();
+	
+	private static final String TIMESTAMP_LABEL = "timestamp";
+	private static final String MESSAGE_LABEL = "message";
+	private static final String LEVEL_LABEL = "level";
+	private static final String SESSION_ID_LABEL = "sessionId";
+	
+	private static final Level DEFAULT_LEVEL = Level.FINE;
+	
 	private Session session;
 	private String httpSessionId;
 
@@ -49,7 +58,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		}
 		catch (IOException ioe)
 		{
-			LoggingEndpoint.logToClient(session, new LogMessage(Level.WARNING, ioe.getMessage()).toJSONString());
+			LoggingEndpoint.logToClient(session, LoggingEndpoint.logRecordToJSON(new LogRecord(Level.WARNING, ioe.getMessage())));
 		}
 	}
 	
@@ -69,7 +78,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			}
 			set.add(this.session);
 			
-			final SortedSet<LogMessage> messageQueue = LoggingEndpoint.MESSAGES.get(this.httpSessionId);
+			final SortedSet<LogRecord> messageQueue = LoggingEndpoint.MESSAGES.get(this.httpSessionId);
 			if (null != messageQueue && !messageQueue.isEmpty())
 			{
 				LoggingEndpoint.logToClient(this.session, new JSONArray(messageQueue).toString());
@@ -81,14 +90,17 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			try
 			{
 				jsonObject.put("sessionId", this.httpSessionId);
-				final LogMessage logMessage = new LogMessage(jsonObject);
+				final LogMessage logMessage = new LogMessage(jsonObject.optString(LoggingEndpoint.SESSION_ID_LABEL, null),
+						LoggingEndpoint.parseLevel(jsonObject),
+						jsonObject.optString(LoggingEndpoint.MESSAGE_LABEL, null),
+						jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));;
 				LoggingEndpoint.queueMessage(logMessage);
 				
 				for (Session websocketSession : LoggingEndpoint.ENDPOINTS.get(this.httpSessionId))
 				{
 					if (!this.session.equals(websocketSession))
 					{
-						LoggingEndpoint.logToClient(websocketSession, logMessage.toJSONString());
+						LoggingEndpoint.logToClient(websocketSession, LoggingEndpoint.logRecordToJSON(logMessage));
 					}
 				}
 			}
@@ -118,35 +130,35 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	}
 
 	/**
-	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogMessage, boolean)}
-	 * @param logMessage The {@link LogMessage} to log
+	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogRecord, boolean)}, defaults to queueing the message
+	 * @param logRecord The {@link LogRecord} to log, acts as a LogMessage with a {@code null} httpSessionId
 	 */
-	public static void log(final LogMessage logMessage)
+	public static void log(LogRecord logRecord)
 	{
-		LoggingEndpoint.log(logMessage, true);
+		LoggingEndpoint.log(logRecord, true);
 	}
-
+	
 	/**
 	 * Logs a message to the endpoint for that message, if no message is specified it will log to all endpoints
-	 * @param logMessage The {@link LogMessage} to log
+	 * @param logRecord The {@link LogMessage} to log
 	 * @param queue boolean value, if true queue the message
 	 */
-	public static void log(final LogMessage logMessage, final boolean queue)
+	public static void log(final LogRecord logRecord, final boolean queue)
 	{
-		final String sessionId = logMessage.getSessionId();
+		final String sessionId = getSessionId(logRecord);
 		
 		// If sessionID is not specified, notify all endpoints
 		if (null == sessionId)
 		{
 			for (final Set<Session> websocketSessions : LoggingEndpoint.ENDPOINTS.values())
 			{
-				LoggingEndpoint.logToClient(websocketSessions, logMessage);
+				LoggingEndpoint.logToClient(websocketSessions, logRecord);
 			}
 
 			// Queue message for all sessions
 			if (queue)
 			{
-				LoggingEndpoint.queueMessageToAll(logMessage);
+				LoggingEndpoint.queueMessageToAll(logRecord);
 			}
 		}
 		else
@@ -154,11 +166,11 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			final Set<Session> websocketSessions = LoggingEndpoint.ENDPOINTS.get(sessionId);
 			if (null != websocketSessions)
 			{
-				LoggingEndpoint.logToClient(websocketSessions, logMessage);
+				LoggingEndpoint.logToClient(websocketSessions, logRecord);
 
 				if (queue)
 				{
-					LoggingEndpoint.queueMessage(logMessage);
+					LoggingEndpoint.queueMessage((LogMessage) logRecord);
 				}
 			}
 			else
@@ -167,21 +179,21 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 						String.format("No LoggingEndpoints registered for session '%s'", sessionId)));
 			}
 		}
-		if (logMessage.getLevel().intValue() > Level.WARNING.intValue())
+		if (logRecord.getLevel().intValue() > Level.WARNING.intValue())
 		{
-			System.err.println(logMessage);
+			System.err.println(logRecord);
 		}
 		else
 		{
-			System.out.println(logMessage);
+			System.out.println(logRecord);
 		}
 	}
 
-	private static void queueMessageToAll(final LogMessage logMessage)
+	private static void queueMessageToAll(final LogRecord logRecord)
 	{
-		for (final SortedSet<LogMessage> messageSet : LoggingEndpoint.MESSAGES.values())
+		for (final SortedSet<LogRecord> messageSet : LoggingEndpoint.MESSAGES.values())
 		{
-			messageSet.add(logMessage);
+			messageSet.add(logRecord);
 		}
 	}
 	
@@ -194,7 +206,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 */
 	private static void queueMessage(final LogMessage logMessage)
 	{
-		SortedSet<LogMessage> messageQueue = LoggingEndpoint.MESSAGES.get(logMessage.getSessionId());
+		SortedSet<LogRecord> messageQueue = LoggingEndpoint.MESSAGES.get(logMessage.getSessionId());
 
 		if (null == messageQueue)
 		{
@@ -211,11 +223,11 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 * @param websocketSessions The endpoints to send the message to
 	 * @param message The message
 	 */
-	private static void logToClient(final Collection<Session> websocketSessions, final LogMessage message)
+	private static void logToClient(final Collection<Session> websocketSessions, final LogRecord message)
 	{
 		for (final Session websocketSession : websocketSessions)
 		{
-			LoggingEndpoint.logToClient(websocketSession, message.toJSONString());
+			LoggingEndpoint.logToClient(websocketSession, LoggingEndpoint.logRecordToJSON(message));
 		}
 	}
 
@@ -235,5 +247,43 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	public static void clearSession(final String id)
 	{
 		LoggingEndpoint.MESSAGES.remove(id);
+	}
+	
+	private static String getSessionId(final LogRecord logRecord)
+	{
+		String sessionId = null;
+		
+		if (logRecord instanceof LogMessage)
+		{
+			sessionId = ((LogMessage) logRecord).getSessionId();
+		}
+		
+		return sessionId;
+	}
+	
+	private static Level parseLevel(final JSONObject jsonObject)
+	{
+		final String levelName = jsonObject.optString(LoggingEndpoint.LEVEL_LABEL);
+		switch (levelName)
+		{
+			case "":
+				return LoggingEndpoint.DEFAULT_LEVEL;
+			case "ERROR": //map javascript error names on to java Levels
+				return Level.SEVERE;
+			case "WARN":
+				return Level.WARNING;
+			default:
+				return Level.parse(levelName);
+		}
+	}
+	
+	private static String logRecordToJSON(final LogRecord logRecord)
+	{		
+		return new JSONObject()
+				.put(LoggingEndpoint.SESSION_ID_LABEL, getSessionId(logRecord))
+				.put(LoggingEndpoint.LEVEL_LABEL, logRecord.getLevel().getName())
+				.put(LoggingEndpoint.MESSAGE_LABEL, logRecord.getMessage())
+				.put(LoggingEndpoint.TIMESTAMP_LABEL, Long.valueOf(logRecord.getMillis()))
+				.toString();
 	}
 }
