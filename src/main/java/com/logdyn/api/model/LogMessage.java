@@ -1,21 +1,20 @@
 package com.logdyn.api.model;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * Java object containing message details: sessionId, level, message, timestamp
  * @author jsjlewis96
  */
-public class LogMessage extends LogRecord implements Comparable<LogMessage>
+public class LogMessage extends LogRecord implements Comparable<LogRecord>
 {
 
 	/** Generated serialID **/
 	private static final long serialVersionUID = -9093297911420796177L;
-	
+
 	private static final Level DEFAULT_LEVEL = Level.FINE;
 	
 	private final String sessionId;
@@ -80,7 +79,7 @@ public class LogMessage extends LogRecord implements Comparable<LogMessage>
 		this.sessionId = sessionId;
 		this.setMillis(timestamp);
 	}
-	
+
 	/**
 	 * @return the sessionId
 	 */
@@ -90,32 +89,9 @@ public class LogMessage extends LogRecord implements Comparable<LogMessage>
 	}
 
 	@Override
-	public int compareTo(final LogMessage other)
+	public int compareTo(LogRecord other)
 	{
-		int result;
-		if (other != null)
-		{
-			result = Long.compare(this.getMillis(), other.getMillis());
-			if (result == 0)
-			{
-				result = Integer.compare(this.getLevel().intValue(), other.getLevel().intValue());
-				if (result == 0)
-				{
-					//noinspection StringEquality
-					result = (this.sessionId == other.sessionId) ? 0 : (this.sessionId == null ? -1 : this.sessionId.compareTo(other.sessionId));
-					if (result == 0)
-					{
-						result = this.getMessage().compareTo(other.getMessage());
-					}
-				}
-			}
-		}
-		else
-		{
-			// if other == null then return -1
-			result = -1;
-		}
-		return result;
+		return LogRecordComparator.COMPARATOR.compare(this, other);
 	}
 
 	/**

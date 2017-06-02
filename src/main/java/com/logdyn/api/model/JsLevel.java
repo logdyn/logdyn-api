@@ -11,6 +11,8 @@ public class JsLevel extends Level
 
     public static final JsLevel WARN = new JsLevel("WARN", 850);
 
+    private static final long serialVersionUID = -6831164266078074026L;
+
     private JsLevel(final String name, final int value)
     {
         super(name, value);
