@@ -6,14 +6,14 @@ var loggingWebsocket = {
 		{
 			var origin = window.location.origin.replace("http://", "ws://").replace("https://","wss://");
 			//TODO generate / find address rather than hardcode
-			websocket = new WebSocket(origin + "/logdyn/LoggingEndpoint");
-			websocket.onopen = function() 
+			loggingWebsocket.websocket = new WebSocket(origin + "/logdyn/LoggingEndpoint");
+			loggingWebsocket.websocket.onopen = function() 
 			{
 				//Sets up the logger instance with the correct session ID
-				websocket.send('{"httpSessionId":"' + sessionId + '"}');
+				loggingWebsocket.websocket.send('{"httpSessionId":"' + sessionId + '"}');
 			};
 			
-			websocket.onmessage = function(message)
+			loggingWebsocket.websocket.onmessage = function(message)
 			{
 				var jsonMessage = JSON.parse(message.data);			
 				
@@ -21,17 +21,17 @@ var loggingWebsocket = {
 				{
 					for (i in jsonMessage)
 					{
-						loggingWebsocket.log(jsonMessage[i], true);
+						loggingWebsocket.logLocalOnly(jsonMessage[i]);
 					}
 				}
 				else
 				{
-					loggingWebsocket.log(jsonMessage, true);
+					loggingWebsocket.logLocalOnly(jsonMessage);
 				}
 			};
 		},
 		
-		log : function(logRecord, localOnly)
+		logLocalOnly : function(logRecord)
 		{
 			logRecord.level = logRecord.level.toUpperCase();
 
@@ -63,17 +63,18 @@ var loggingWebsocket = {
 					func = console.log;
 			}
 			
-			if (!localOnly)
-			{
-				websocket.send(JSON.stringify(logRecord));
-			}
-			
 			func(logRecord.level + " : " + logRecord.message);
+		},
+		
+		log : function(logRecord)
+		{
+			logLocalOnly(logRecord);
+			loggingWebsocket.websocket.send(JSON.stringify(logRecord));
 		},
 		
 		closeConnect : function()
 		{
-			websocket.close();
+			loggingWebsocket.websocket.close();
 		}
 }
 
