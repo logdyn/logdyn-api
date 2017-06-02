@@ -6,11 +6,11 @@ import java.util.logging.LogRecord;
 /**
  * Created by Matt on 02/06/2017.
  */
-public class LogRecordComparitor implements Comparator<LogRecord>
+public class LogRecordComparator implements Comparator<LogRecord>
 {
-    public static final LogRecordComparitor COMPARITOR = new LogRecordComparitor();
+    public static final LogRecordComparator COMPARATOR = new LogRecordComparator();
 
-    private LogRecordComparitor()
+    private LogRecordComparator()
     {
         super();
     }
@@ -38,7 +38,7 @@ public class LogRecordComparitor implements Comparator<LogRecord>
             {
                 final String o1SessionId = o1 instanceof LogMessage ? ((LogMessage) o1).getSessionId() : null;
                 final String o2SessionId = o2 instanceof LogMessage ? ((LogMessage) o2).getSessionId() : null;
-                result = NullComparitor.NULL_FIRST.compare(o1SessionId, o2SessionId);
+                result = NullComparator.NULL_FIRST.compare(o1SessionId, o2SessionId);
                 if (result == 0)
                 {
                     result = o1.getMessage().compareTo(o2.getMessage());
@@ -48,28 +48,24 @@ public class LogRecordComparitor implements Comparator<LogRecord>
         return result;
     }
 
-    private static class NullComparitor implements Comparator<String>
+    private static class NullComparator implements Comparator<String>
     {
-        public static final NullComparitor NULL_FIRST = new NullComparitor(true);
+        public static final NullComparator NULL_FIRST = new NullComparator();
 
-        public static final NullComparitor NULL_LAST = new NullComparitor(false);
-
-        final boolean nullFirst;
-
-        private NullComparitor(final boolean nullFirst)
+        private NullComparator()
         {
-            this.nullFirst = nullFirst;
+            super();
         }
 
         @Override
         public int compare(String o1, String o2) {
             if (o1 == null)
             {
-                return (o2 == null) ? 0 : (this.nullFirst ? -1 : 1);
+                return (o2 == null) ? 0 : -1 ;
             }
             else if (o2 == null)
             {
-                return this.nullFirst ? 1: -1;
+                return 1;
             }
             else
             {

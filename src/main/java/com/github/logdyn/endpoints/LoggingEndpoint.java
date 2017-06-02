@@ -2,7 +2,7 @@ package com.github.logdyn.endpoints;
 
 
 import com.github.logdyn.model.LogMessage;
-import com.github.logdyn.model.LogRecordComparitor;
+import com.github.logdyn.model.LogRecordComparator;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -204,7 +204,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 
 		if (null == messageQueue)
 		{
-			messageQueue = new ConcurrentSkipListSet<>(LogRecordComparitor.COMPARITOR);
+			messageQueue = new ConcurrentSkipListSet<>(LogRecordComparator.COMPARATOR);
 			LoggingEndpoint.MESSAGES.put(logMessage.getSessionId(), messageQueue);
 		}
 

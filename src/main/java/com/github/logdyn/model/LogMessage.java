@@ -1,10 +1,9 @@
 package com.github.logdyn.model;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * Java object containing message details: sessionId, level, message, timestamp
@@ -92,7 +91,7 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 	@Override
 	public int compareTo(LogRecord other)
 	{
-		return LogRecordComparitor.COMPARITOR.compare(this, other);
+		return LogRecordComparator.COMPARATOR.compare(this, other);
 	}
 
 	/**
