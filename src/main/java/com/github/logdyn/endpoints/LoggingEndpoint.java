@@ -1,6 +1,14 @@
 package com.github.logdyn.endpoints;
 
 
+import com.github.logdyn.model.LogMessage;
+import com.github.logdyn.model.LogRecordComparitor;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
+import javax.websocket.*;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Collection;
@@ -12,20 +20,6 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-
-import javax.websocket.CloseReason;
-import javax.websocket.Endpoint;
-import javax.websocket.EndpointConfig;
-import javax.websocket.MessageHandler;
-import javax.websocket.Session;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
-
-import com.github.logdyn.model.LogMessage;
-import com.github.logdyn.model.LogRecordComparitor;
 
 /**
  * Endpoint Class used to log messages and send them to the client
@@ -94,7 +88,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 				final LogMessage logMessage = new LogMessage(jsonObject.optString(LoggingEndpoint.SESSION_ID_LABEL, null),
 						LoggingEndpoint.parseLevel(jsonObject),
 						jsonObject.optString(LoggingEndpoint.MESSAGE_LABEL, null),
-						jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));;
+						jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));
 				LoggingEndpoint.queueMessage(logMessage);
 				
 				for (Session websocketSession : LoggingEndpoint.ENDPOINTS.get(this.httpSessionId))

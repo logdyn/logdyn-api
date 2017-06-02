@@ -48,7 +48,7 @@ public class LogRecordComparitor implements Comparator<LogRecord>
         return result;
     }
 
-    private static class NullComparitor<V extends Comparable<V>> implements Comparator<V>
+    private static class NullComparitor implements Comparator<String>
     {
         public static final NullComparitor NULL_FIRST = new NullComparitor(true);
 
@@ -62,7 +62,7 @@ public class LogRecordComparitor implements Comparator<LogRecord>
         }
 
         @Override
-        public int compare(V o1, V o2) {
+        public int compare(String o1, String o2) {
             if (o1 == null)
             {
                 return (o2 == null) ? 0 : (this.nullFirst ? -1 : 1);
