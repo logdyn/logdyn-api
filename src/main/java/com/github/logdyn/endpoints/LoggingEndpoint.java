@@ -3,9 +3,29 @@ package com.github.logdyn.endpoints;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+
+import javax.websocket.CloseReason;
+import javax.websocket.Endpoint;
+import javax.websocket.EndpointConfig;
+import javax.websocket.MessageHandler;
+import javax.websocket.Session;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
+import com.github.logdyn.model.LogMessage;
+import com.github.logdyn.model.LogRecordComparitor;
 
 /**
  * Endpoint Class used to log messages and send them to the client
@@ -114,7 +134,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogRecord, boolean)}, defaults to queueing the message
 	 * @param logRecord The {@link LogRecord} to log, acts as a LogMessage with a {@code null} httpSessionId
 	 */
-	public static void log(LogRecord logRecord)
+	public static void log(final LogRecord logRecord)
 	{
 		LoggingEndpoint.log(logRecord, true);
 	}
@@ -253,7 +273,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	}
 	
 	private static String logRecordToJSON(final LogRecord logRecord)
-	{		
+	{
 		return new JSONObject()
 				.put(LoggingEndpoint.SESSION_ID_LABEL, LoggingEndpoint.getSessionId(logRecord))
 				.put(LoggingEndpoint.LEVEL_LABEL, logRecord.getLevel().getName())
