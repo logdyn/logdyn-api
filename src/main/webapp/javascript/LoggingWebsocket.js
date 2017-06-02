@@ -31,7 +31,7 @@ var loggingWebsocket = {
 			};
 		},
 		
-		logLocalOnly(logRecord)
+		logLocalOnly : function(logRecord)
 		{
 			logRecord.level = logRecord.level.toUpperCase();
 
