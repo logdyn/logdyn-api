@@ -6,14 +6,14 @@ var loggingWebsocket = {
 		{
 			var origin = window.location.origin.replace("http://", "ws://").replace("https://","wss://");
 			//TODO generate / find address rather than hardcode
-			websocket = new WebSocket(origin + "/logdyn/LoggingEndpoint");
-			websocket.onopen = function() 
+			loggingWebsocket.websocket = new WebSocket(origin + "/logdyn/LoggingEndpoint");
+			loggingWebsocket.websocket.onopen = function() 
 			{
 				//Sets up the logger instance with the correct session ID
-				websocket.send('{"httpSessionId":"' + sessionId + '"}');
+				loggingWebsocket.websocket.send('{"httpSessionId":"' + sessionId + '"}');
 			};
 			
-			websocket.onmessage = function(message)
+			loggingWebsocket.websocket.onmessage = function(message)
 			{
 				var jsonMessage = JSON.parse(message.data);			
 				
@@ -69,12 +69,12 @@ var loggingWebsocket = {
 		log : function(logRecord)
 		{
 			logLocalOnly(logRecord);
-			websocket.send(JSON.stringify(logRecord));
+			loggingWebsocket.websocket.send(JSON.stringify(logRecord));
 		},
 		
 		closeConnect : function()
 		{
-			websocket.close();
+			loggingWebsocket.websocket.close();
 		}
 }
 
