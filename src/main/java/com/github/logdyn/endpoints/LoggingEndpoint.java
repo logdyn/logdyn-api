@@ -1,30 +1,24 @@
 package com.github.logdyn.endpoints;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.concurrent.Future;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-
-import javax.websocket.CloseReason;
-import javax.websocket.Endpoint;
-import javax.websocket.EndpointConfig;
-import javax.websocket.MessageHandler;
-import javax.websocket.Session;
-
+import com.github.logdyn.model.LogMessage;
+import com.github.logdyn.model.LogRecordComparitor;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-import com.github.logdyn.model.LogMessage;
+import javax.websocket.*;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 /**
  * Endpoint Class used to log messages and send them to the client
@@ -34,8 +28,8 @@ import com.github.logdyn.model.LogMessage;
 public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Reader>
 {
 
-	private static final Map<String, Set<Session>> ENDPOINTS = new HashMap<>();
-	private static final Map<String, SortedSet<LogRecord>> MESSAGES = new HashMap<>();
+	private static final Map<String, Set<Session>> ENDPOINTS = new ConcurrentHashMap<>();
+	private static final Map<String, SortedSet<LogRecord>> MESSAGES = new ConcurrentHashMap<>();
 	
 	private static final String TIMESTAMP_LABEL = "timestamp";
 	private static final String MESSAGE_LABEL = "message";
@@ -71,7 +65,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			Set<Session> set = LoggingEndpoint.ENDPOINTS.get(this.httpSessionId);
 			if (null == set)
 			{
-				set = new HashSet<>();
+				set = new ConcurrentHashMap().keySet();
 				LoggingEndpoint.ENDPOINTS.put(this.httpSessionId, set);
 			}
 			set.add(this.session);
@@ -223,8 +217,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 
 	/**
 	 * Adds a message to the queue of messages for that session ID
-	 * 
-	 * @param httpSessionId The HTTP session ID
+	 *
 	 * @param logMessage The {@link LogMessage} to queue
 	 */
 	private static void queueMessage(final LogMessage logMessage)
@@ -233,7 +226,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 
 		if (null == messageQueue)
 		{
-			messageQueue = new TreeSet<>();
+			messageQueue = new ConcurrentSkipListSet<>(LogRecordComparitor.COMPARITOR);
 			LoggingEndpoint.MESSAGES.put(logMessage.getSessionId(), messageQueue);
 		}
 
@@ -257,10 +250,8 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	/**
 	 * Send an array of messages to an endpoint
 	 * 
-	 * @param endpoint
-	 *            The endpoint to send the messages to
-	 * @param jsonArray
-	 *            A JSON array of log messages
+	 * @param session The session to send the messages to
+	 * @param message the message to send
 	 */
 	private static Future<Void> logToClient(final Session session, final String message)
 	{
