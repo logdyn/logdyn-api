@@ -1,6 +1,8 @@
 package com.github.logdyn.endpoints;
 
+
 import com.github.logdyn.model.LogMessage;
+import com.github.logdyn.model.LogRecordComparator;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -9,7 +11,12 @@ import org.json.JSONTokener;
 import javax.websocket.*;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -22,8 +29,8 @@ import java.util.logging.LogRecord;
 public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Reader>
 {
 
-	private static final Map<String, Set<Session>> ENDPOINTS = new HashMap<>();
-	private static final Map<String, SortedSet<LogRecord>> MESSAGES = new HashMap<>();
+	private static final Map<String, Set<Session>> ENDPOINTS = new ConcurrentHashMap<>();
+	private static final Map<String, SortedSet<LogRecord>> MESSAGES = new ConcurrentHashMap<>();
 	
 	private static final String TIMESTAMP_LABEL = "timestamp";
 	private static final String MESSAGE_LABEL = "message";
@@ -61,7 +68,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			Set<Session> set = LoggingEndpoint.ENDPOINTS.get(this.httpSessionId);
 			if (null == set)
 			{
-				set = new HashSet<>();
+				set = new ConcurrentHashMap<Session, Void>().keySet();
 				LoggingEndpoint.ENDPOINTS.put(this.httpSessionId, set);
 			}
 			set.add(this.session);
@@ -81,7 +88,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 				final LogMessage logMessage = new LogMessage(jsonObject.optString(LoggingEndpoint.SESSION_ID_LABEL, null),
 						LoggingEndpoint.parseLevel(jsonObject),
 						jsonObject.optString(LoggingEndpoint.MESSAGE_LABEL, null),
-						jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));;
+						jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));
 				LoggingEndpoint.queueMessage(logMessage);
 				
 				for (Session websocketSession : LoggingEndpoint.ENDPOINTS.get(this.httpSessionId))
@@ -121,7 +128,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogRecord, boolean)}, defaults to queueing the message
 	 * @param logRecord The {@link LogRecord} to log, acts as a LogMessage with a {@code null} httpSessionId
 	 */
-	public static void log(LogRecord logRecord)
+	public static void log(final LogRecord logRecord)
 	{
 		LoggingEndpoint.log(logRecord, true);
 	}
@@ -197,7 +204,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 
 		if (null == messageQueue)
 		{
-			messageQueue = new TreeSet<>();
+			messageQueue = new ConcurrentSkipListSet<>(LogRecordComparator.COMPARATOR);
 			LoggingEndpoint.MESSAGES.put(logMessage.getSessionId(), messageQueue);
 		}
 
@@ -260,7 +267,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	}
 	
 	private static String logRecordToJSON(final LogRecord logRecord)
-	{		
+	{
 		return new JSONObject()
 				.put(LoggingEndpoint.SESSION_ID_LABEL, LoggingEndpoint.getSessionId(logRecord))
 				.put(LoggingEndpoint.LEVEL_LABEL, logRecord.getLevel().getName())
