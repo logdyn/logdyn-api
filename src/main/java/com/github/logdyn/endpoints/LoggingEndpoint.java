@@ -36,6 +36,8 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	private static final String LEVEL_LABEL = "level";
 	private static final String SESSION_ID_LABEL = "sessionId";
 	
+	private static final Level DEFAULT_LEVEL = Level.FINE;
+	
 	private Session session;
 	private String httpSessionId;
 
@@ -82,7 +84,10 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			try
 			{
 				jsonObject.put("sessionId", this.httpSessionId);
-				final LogMessage logMessage = new LogMessage(jsonObject);
+				final LogMessage logMessage = new LogMessage(jsonObject.optString(LoggingEndpoint.SESSION_ID_LABEL, null),
+						LoggingEndpoint.parseLevel(jsonObject),
+						jsonObject.optString(LoggingEndpoint.MESSAGE_LABEL, null),
+						jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));;
 				LoggingEndpoint.queueMessage(logMessage);
 				
 				for (Session websocketSession : LoggingEndpoint.ENDPOINTS.get(this.httpSessionId))
@@ -119,57 +124,6 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	}
 
 	/**
-	 * Logs a message to the endpoint for that message, if no message is specified it will log to all endpoints
-	 * @param logMessage The {@link LogMessage} to log
-	 * @param queue boolean value, if true queue the message
-	 */
-	private static void log(final LogMessage logMessage, final boolean queue)
-	{
-		final String sessionId = logMessage.getSessionId();
-		
-		// If sessionID is not specified, notify all endpoints
-		if (null == sessionId)
-		{
-			for (final Set<Session> websocketSessions : LoggingEndpoint.ENDPOINTS.values())
-			{
-				LoggingEndpoint.logToClient(websocketSessions, logMessage);
-			}
-
-			// Queue message for all sessions
-			if (queue)
-			{
-				LoggingEndpoint.queueMessageToAll(logMessage);
-			}
-		}
-		else
-		{
-			final Set<Session> websocketSessions = LoggingEndpoint.ENDPOINTS.get(sessionId);
-			if (null != websocketSessions)
-			{
-				LoggingEndpoint.logToClient(websocketSessions, logMessage);
-
-				if (queue)
-				{
-					LoggingEndpoint.queueMessage(logMessage);
-				}
-			}
-			else
-			{
-				LoggingEndpoint.log(new LogMessage(Level.WARNING,
-						String.format("No LoggingEndpoints registered for session '%s'", sessionId)));
-			}
-		}
-		if (logMessage.getLevel().intValue() > Level.WARNING.intValue())
-		{
-			System.err.println(logMessage);
-		}
-		else
-		{
-			System.out.println(logMessage);
-		}
-	}
-	
-	/**
 	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogRecord, boolean)}, defaults to queueing the message
 	 * @param logRecord The {@link LogRecord} to log, acts as a LogMessage with a {@code null} httpSessionId
 	 */
@@ -179,30 +133,53 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	}
 	
 	/**
-	 * Logs a message to the client, see {@link LoggingEndpoint#log(LogRecord, boolean)}
-	 * @param logRecord The {@link LogRecord} to log, acts as a LogMessage with a {@code null} httpSessionId
-	 * @param queue If false does not queue the message for storage, if always true log(LogRecord) can be used
+	 * Logs a message to the endpoint for that message, if no message is specified it will log to all endpoints
+	 * @param logRecord The {@link LogMessage} to log
+	 * @param queue boolean value, if true queue the message
 	 */
 	public static void log(final LogRecord logRecord, final boolean queue)
 	{
-		for (final Set<Session> websocketSessions : LoggingEndpoint.ENDPOINTS.values())
-		{
-			LoggingEndpoint.logToClient(websocketSessions, logRecord);
-		}
-
-		// Queue message for all sessions
-		if (queue)
-		{
-			LoggingEndpoint.queueMessageToAll(logRecord);
-		}
+		final String sessionId = getSessionId(logRecord);
 		
-		if (logRecord.getLevel().intValue() > Level.WARNING.intValue())
+		// If sessionID is not specified, notify all endpoints
+		if (null == sessionId)
 		{
-			System.err.println(LoggingEndpoint.logRecordToJSON(logRecord));
+			for (final Set<Session> websocketSessions : LoggingEndpoint.ENDPOINTS.values())
+			{
+				LoggingEndpoint.logToClient(websocketSessions, logRecord);
+			}
+
+			// Queue message for all sessions
+			if (queue)
+			{
+				LoggingEndpoint.queueMessageToAll(logRecord);
+			}
 		}
 		else
 		{
-			System.out.println(LoggingEndpoint.logRecordToJSON(logRecord));
+			final Set<Session> websocketSessions = LoggingEndpoint.ENDPOINTS.get(sessionId);
+			if (null != websocketSessions)
+			{
+				LoggingEndpoint.logToClient(websocketSessions, logRecord);
+
+				if (queue)
+				{
+					LoggingEndpoint.queueMessage((LogMessage) logRecord);
+				}
+			}
+			else
+			{
+				LoggingEndpoint.log(new LogMessage(Level.WARNING,
+						String.format("No LoggingEndpoints registered for session '%s'", sessionId)));
+			}
+		}
+		if (logRecord.getLevel().intValue() > Level.WARNING.intValue())
+		{
+			System.err.println(logRecord);
+		}
+		else
+		{
+			System.out.println(logRecord);
 		}
 	}
 
@@ -263,7 +240,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		LoggingEndpoint.MESSAGES.remove(id);
 	}
 	
-	private static String logRecordToJSON(final LogRecord logRecord)
+	private static String getSessionId(final LogRecord logRecord)
 	{
 		String sessionId = null;
 		
@@ -272,8 +249,29 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			sessionId = ((LogMessage) logRecord).getSessionId();
 		}
 		
+		return sessionId;
+	}
+	
+	private static Level parseLevel(final JSONObject jsonObject)
+	{
+		final String levelName = jsonObject.optString(LoggingEndpoint.LEVEL_LABEL);
+		switch (levelName)
+		{
+			case "":
+				return LoggingEndpoint.DEFAULT_LEVEL;
+			case "ERROR": //map javascript error names on to java Levels
+				return Level.SEVERE;
+			case "WARN":
+				return Level.WARNING;
+			default:
+				return Level.parse(levelName);
+		}
+	}
+	
+	private static String logRecordToJSON(final LogRecord logRecord)
+	{		
 		return new JSONObject()
-				.put(LoggingEndpoint.SESSION_ID_LABEL, sessionId)
+				.put(LoggingEndpoint.SESSION_ID_LABEL, getSessionId(logRecord))
 				.put(LoggingEndpoint.LEVEL_LABEL, logRecord.getLevel().getName())
 				.put(LoggingEndpoint.MESSAGE_LABEL, logRecord.getMessage())
 				.put(LoggingEndpoint.TIMESTAMP_LABEL, Long.valueOf(logRecord.getMillis()))

@@ -1,12 +1,10 @@
 package com.github.logdyn.model;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import javax.servlet.http.HttpServletRequest;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * Java object containing message details: sessionId, level, message, timestamp
@@ -17,12 +15,7 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 
 	/** Generated serialID **/
 	private static final long serialVersionUID = -9093297911420796177L;
-	
-	private static final String TIMESTAMP_LABEL = "timestamp";
-	private static final String MESSAGE_LABEL = "message";
-	private static final String LEVEL_LABEL = "level";
-	private static final String SESSION_ID_LABEL = "sessionId";
-	
+
 	private static final Level DEFAULT_LEVEL = Level.FINE;
 	
 	private final String sessionId;
@@ -75,20 +68,6 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 
 	/**
 	 * Constructor
-	 * Takes a JSONObject
-	 * @param jsonObject The JSONObject
-	 * @throws JSONException
-	 */
-	public LogMessage(final JSONObject jsonObject) throws JSONException
-	{
-		this(jsonObject.optString(LogMessage.SESSION_ID_LABEL, null),
-				LogMessage.parseLevel(jsonObject),
-				jsonObject.optString(LogMessage.MESSAGE_LABEL, null),
-				jsonObject.optLong(LogMessage.TIMESTAMP_LABEL, System.currentTimeMillis()));
-	}
-
-	/**
-	 * Constructor
 	 * Ideally other constructors should be used
 	 * @param sessionId The HttpSessionId
 	 * @param level The log level, see {@link java.util.logging.Level}
@@ -100,22 +79,6 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 		super(level, message);
 		this.sessionId = sessionId;
 		this.setMillis(timestamp);
-	}
-	
-	private static Level parseLevel(final JSONObject jsonObject)
-	{
-		final String levelName = jsonObject.optString(LogMessage.LEVEL_LABEL);
-		switch (levelName)
-		{
-			case "":
-				return LogMessage.DEFAULT_LEVEL;
-			case "ERROR": //map javascript error names on to java Levels
-				return Level.SEVERE;
-			case "WARN":
-				return Level.WARNING;
-			default:
-				return Level.parse(levelName);
-		}
 	}
 
 	/**
