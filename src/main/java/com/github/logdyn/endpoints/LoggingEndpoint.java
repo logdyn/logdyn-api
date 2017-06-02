@@ -74,7 +74,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			Set<Session> set = LoggingEndpoint.ENDPOINTS.get(this.httpSessionId);
 			if (null == set)
 			{
-				set = new ConcurrentHashMap().keySet();
+				set = new ConcurrentHashMap<Session, Void>().keySet();
 				LoggingEndpoint.ENDPOINTS.put(this.httpSessionId, set);
 			}
 			set.add(this.session);
