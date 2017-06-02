@@ -1,9 +1,9 @@
-package com.github.logdyn.listeners;
+package com.logdyn.api.listeners;
 
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 
-import com.github.logdyn.endpoints.LoggingEndpoint;
+import com.logdyn.api.endpoints.LoggingEndpoint;
 
 /**
  * Application Lifecycle Listener implementation class HttpListener

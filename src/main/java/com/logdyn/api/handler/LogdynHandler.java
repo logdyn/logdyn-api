@@ -1,9 +1,9 @@
-package com.github.logdyn.handler;
+package com.logdyn.api.handler;
 
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
-import com.github.logdyn.endpoints.LoggingEndpoint;
+import com.logdyn.api.endpoints.LoggingEndpoint;
 
 public class LogdynHandler extends Handler
 {

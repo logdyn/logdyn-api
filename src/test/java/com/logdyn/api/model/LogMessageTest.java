@@ -1,9 +1,9 @@
-package com.github.logdyn.model;
+package com.logdyn.api.model;
+
+import java.util.logging.Level;
 
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.util.logging.Level;
 
 public class LogMessageTest
 {

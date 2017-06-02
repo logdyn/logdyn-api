@@ -1,4 +1,4 @@
-package com.github.logdyn.model;
+package com.logdyn.api.model;
 
 import java.util.Objects;
 import java.util.logging.Level;

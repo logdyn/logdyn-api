@@ -1,18 +1,30 @@
-package com.github.logdyn.endpoints;
+package com.logdyn.api.endpoints;
 
-import com.github.logdyn.model.LogMessage;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+
+import javax.websocket.CloseReason;
+import javax.websocket.Endpoint;
+import javax.websocket.EndpointConfig;
+import javax.websocket.MessageHandler;
+import javax.websocket.Session;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-import javax.websocket.*;
-import java.io.IOException;
-import java.io.Reader;
-import java.util.*;
-import java.util.concurrent.Future;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
+import com.logdyn.api.model.LogMessage;
 
 /**
  * Endpoint Class used to log messages and send them to the client
