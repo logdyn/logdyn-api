@@ -1,4 +1,4 @@
-package com.github.logdyn.filters;
+package com.logdyn.api.filters;
 
 import java.io.IOException;
 import java.util.logging.Level;
@@ -11,8 +11,8 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 
-import com.github.logdyn.endpoints.LoggingEndpoint;
-import com.github.logdyn.model.LogMessage;
+import com.logdyn.api.endpoints.LoggingEndpoint;
+import com.logdyn.api.model.LogMessage;
 
 /**
  * Servlet Filter implementation class LoggingFilter

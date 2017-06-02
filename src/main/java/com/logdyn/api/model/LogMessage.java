@@ -1,4 +1,4 @@
-package com.github.logdyn.model;
+package com.logdyn.api.model;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Objects;

@@ -1,14 +1,5 @@
-package com.github.logdyn.endpoints;
+package com.logdyn.api.endpoints;
 
-
-import com.github.logdyn.model.LogMessage;
-import com.github.logdyn.model.LogRecordComparator;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
-
-import javax.websocket.*;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Collection;
@@ -20,6 +11,20 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+
+import javax.websocket.CloseReason;
+import javax.websocket.Endpoint;
+import javax.websocket.EndpointConfig;
+import javax.websocket.MessageHandler;
+import javax.websocket.Session;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
+import com.logdyn.api.model.LogMessage;
+import com.logdyn.api.model.LogRecordComparator;
 
 /**
  * Endpoint Class used to log messages and send them to the client

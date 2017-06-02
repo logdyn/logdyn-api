@@ -1,4 +1,4 @@
-package com.github.logdyn.endpoints;
+package com.logdyn.api.endpoints;
 
 import java.util.Collections;
 import java.util.HashSet;
