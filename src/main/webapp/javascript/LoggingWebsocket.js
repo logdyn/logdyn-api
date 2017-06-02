@@ -21,17 +21,17 @@ var loggingWebsocket = {
 				{
 					for (i in jsonMessage)
 					{
-						loggingWebsocket.log(jsonMessage[i], true);
+						loggingWebsocket.logLocalOnly(jsonMessage[i]);
 					}
 				}
 				else
 				{
-					loggingWebsocket.log(jsonMessage, true);
+					loggingWebsocket.logLocalOnly(jsonMessage);
 				}
 			};
 		},
 		
-		log : function(logRecord, localOnly)
+		logLocalOnly(logRecord)
 		{
 			logRecord.level = logRecord.level.toUpperCase();
 
@@ -63,12 +63,13 @@ var loggingWebsocket = {
 					func = console.log;
 			}
 			
-			if (!localOnly)
-			{
-				websocket.send(JSON.stringify(logRecord));
-			}
-			
 			func(logRecord.level + " : " + logRecord.message);
+		},
+		
+		log : function(logRecord)
+		{
+			logLocalOnly(logRecord);
+			websocket.send(JSON.stringify(logRecord));
 		},
 		
 		closeConnect : function()
