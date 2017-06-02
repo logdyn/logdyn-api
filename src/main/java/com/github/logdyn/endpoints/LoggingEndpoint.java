@@ -1,30 +1,18 @@
 package com.github.logdyn.endpoints;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.concurrent.Future;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-
-import javax.websocket.CloseReason;
-import javax.websocket.Endpoint;
-import javax.websocket.EndpointConfig;
-import javax.websocket.MessageHandler;
-import javax.websocket.Session;
-
+import com.github.logdyn.model.LogMessage;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-import com.github.logdyn.model.LogMessage;
+import javax.websocket.*;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.*;
+import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 /**
  * Endpoint Class used to log messages and send them to the client
@@ -145,7 +133,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 */
 	public static void log(final LogRecord logRecord, final boolean queue)
 	{
-		final String sessionId = getSessionId(logRecord);
+		final String sessionId = LoggingEndpoint.getSessionId(logRecord);
 		
 		// If sessionID is not specified, notify all endpoints
 		if (null == sessionId)
@@ -201,7 +189,6 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	/**
 	 * Adds a message to the queue of messages for that session ID
 	 * 
-	 * @param httpSessionId The HTTP session ID
 	 * @param logMessage The {@link LogMessage} to queue
 	 */
 	private static void queueMessage(final LogMessage logMessage)
@@ -234,10 +221,8 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	/**
 	 * Send an array of messages to an endpoint
 	 * 
-	 * @param endpoint
-	 *            The endpoint to send the messages to
-	 * @param jsonArray
-	 *            A JSON array of log messages
+	 * @param session The session to send the messages to
+	 * @param message the message to send
 	 */
 	private static Future<Void> logToClient(final Session session, final String message)
 	{
@@ -263,24 +248,21 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	
 	private static Level parseLevel(final JSONObject jsonObject)
 	{
-		final String levelName = jsonObject.optString(LoggingEndpoint.LEVEL_LABEL);
-		switch (levelName)
+		final String levelName = jsonObject.optString(LoggingEndpoint.LEVEL_LABEL, null);
+		if(null == levelName)
 		{
-			case "":
-				return LoggingEndpoint.DEFAULT_LEVEL;
-			case "ERROR": //map javascript error names on to java Levels
-				return Level.SEVERE;
-			case "WARN":
-				return Level.WARNING;
-			default:
-				return Level.parse(levelName);
+			return LoggingEndpoint.DEFAULT_LEVEL;
+		}
+		else
+		{
+			return Level.parse(levelName);
 		}
 	}
 	
 	private static String logRecordToJSON(final LogRecord logRecord)
 	{		
 		return new JSONObject()
-				.put(LoggingEndpoint.SESSION_ID_LABEL, getSessionId(logRecord))
+				.put(LoggingEndpoint.SESSION_ID_LABEL, LoggingEndpoint.getSessionId(logRecord))
 				.put(LoggingEndpoint.LEVEL_LABEL, logRecord.getLevel().getName())
 				.put(LoggingEndpoint.MESSAGE_LABEL, logRecord.getMessage())
 				.put(LoggingEndpoint.TIMESTAMP_LABEL, Long.valueOf(logRecord.getMillis()))
