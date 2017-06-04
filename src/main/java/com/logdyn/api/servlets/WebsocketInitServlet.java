@@ -28,6 +28,6 @@ public class WebsocketInitServlet extends HttpServlet
 			username = userPrincipal.getName();
 		}
 		
-		LoggingEndpoint.registerEndpoint(websocketUUID, username, httpSessionId);
+		LoggingEndpoint.registerWebsocket(websocketUUID, username, httpSessionId);
 	}
 }

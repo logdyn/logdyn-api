@@ -135,7 +135,13 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		}
 	}
 	
-	public static void registerEndpoint(UUID websocketId, String username, String httpSessionId)
+	/**
+	 * 
+	 * @param websocketId
+	 * @param username
+	 * @param httpSessionId
+	 */
+	public static void registerWebsocket(UUID websocketId, String username, String httpSessionId)
 	{
 		Session websocketSession = LoggingEndpoint.ENDPOINTS.get(websocketId);
 		Set<Session> set;
