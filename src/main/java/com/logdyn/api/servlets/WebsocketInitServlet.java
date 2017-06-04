@@ -2,6 +2,7 @@ package com.logdyn.api.servlets;
 
 import java.io.IOException;
 import java.security.Principal;
+import java.util.UUID;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -17,20 +18,16 @@ public class WebsocketInitServlet extends HttpServlet
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
 	{
-		final String websocketUUID = req.getParameter("uuid");
+		final UUID websocketUUID = UUID.fromString(req.getParameter("uuid"));
 		final String httpSessionId = req.getRequestedSessionId();
 		final Principal userPrincipal = req.getUserPrincipal();
-		String key;
+		String username = null;
 		
 		if (null != userPrincipal)
 		{
-			key = userPrincipal.getName();
-		}
-		else
-		{
-			key = httpSessionId;
+			username = userPrincipal.getName();
 		}
 		
-		LoggingEndpoint.registerEndpoint(websocketUUID, key);
+		LoggingEndpoint.registerEndpoint(websocketUUID, username, httpSessionId);
 	}
 }
