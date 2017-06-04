@@ -7,26 +7,30 @@ var loggingWebsocket = {
 			var origin = window.location.origin.replace("http://", "ws://").replace("https://","wss://");
 			//TODO generate / find address rather than hardcode
 			loggingWebsocket.websocket = new WebSocket(origin + "/logdyn/LoggingEndpoint");
+			
 			loggingWebsocket.websocket.onopen = function() 
 			{
-				//Sets up the logger instance with the correct session ID
-				loggingWebsocket.websocket.send('{"httpSessionId":"' + sessionId + '"}');
+				
 			};
 			
 			loggingWebsocket.websocket.onmessage = function(message)
 			{
-				var jsonMessage = JSON.parse(message.data);			
+				var jsonMessage = JSON.parse(message.data);
 				
-				if (Array.isArray(jsonMessage))
+				if (jsonMessage.uuid)
 				{
-					for (i in jsonMessage)
-					{
-						loggingWebsocket.logLocalOnly(jsonMessage[i]);
+					var xhttp;
+					if (window.XMLHttpRequest)
+			        {
+						xhttp = new XMLHttpRequest();
 					}
-				}
-				else
-				{
-					loggingWebsocket.logLocalOnly(jsonMessage);
+			        else
+			        {
+						xhttp = new ActiveXObject('Microsoft.XMLHTTP');
+					}
+					xhttp.open('POST', 'WebsocketInitServlet', true);
+					xhttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+					xhttp.send('uuid=' + jsonMessage.uuid);
 				}
 			};
 		},
