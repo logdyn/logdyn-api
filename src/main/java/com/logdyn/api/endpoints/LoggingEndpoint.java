@@ -136,7 +136,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	}
 	
 	/**
-	 * 
+	 * Used when initially opening a websocket, adds websocket to list of endpoints
 	 * @param websocketId
 	 * @param username
 	 * @param httpSessionId
