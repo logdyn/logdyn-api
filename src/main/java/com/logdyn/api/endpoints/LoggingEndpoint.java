@@ -2,6 +2,7 @@ package com.logdyn.api.endpoints;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.security.Principal;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -58,7 +59,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		{
 			session.getAsyncRemote().setBatchingAllowed(false);
 		}
-		catch (IOException ioe)
+		catch (final IOException ioe)
 		{
 			LoggingEndpoint.logToClient(session, LoggingEndpoint.logRecordToJSON(new LogRecord(Level.WARNING, ioe.getMessage())));
 		}
@@ -102,7 +103,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 						jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));
 				LoggingEndpoint.queueMessage(logMessage);
 				
-				for (Session websocketSession : LoggingEndpoint.ENDPOINT_USAGE.get(this.httpSessionId))
+				for (final Session websocketSession : LoggingEndpoint.ENDPOINT_USAGE.get(this.httpSessionId))
 				{
 					if (!this.websocketSession.equals(websocketSession))
 					{
@@ -110,7 +111,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 					}
 				}
 			}
-			catch (JSONException ex)
+			catch (final JSONException ex)
 			{
 				LoggingEndpoint.log(new LogMessage(this.httpSessionId, Level.WARNING, ex.getMessage()));
 			}
@@ -138,13 +139,19 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	/**
 	 * Used when initially opening a websocket, adds websocket to list of endpoints
 	 * @param websocketId
-	 * @param username
 	 * @param httpSessionId
 	 */
-	public static void registerWebsocket(UUID websocketId, String username, String httpSessionId)
+	public static void registerWebsocket(final UUID websocketId, final String httpSessionId)
 	{
-		Session websocketSession = LoggingEndpoint.ENDPOINTS.get(websocketId);
+		final Session websocketSession = LoggingEndpoint.ENDPOINTS.get(websocketId);
 		Set<Session> set;
+		final Principal userPrincipal = websocketSession.getUserPrincipal();
+		String username = null;
+		
+		if (null != userPrincipal)
+		{
+			username = userPrincipal.getName();
+		}
 		
 		if (null != username)
 		{
