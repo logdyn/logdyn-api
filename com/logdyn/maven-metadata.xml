@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <plugins>
+    <plugin>
+      <name>logdyn_api Maven Plugin</name>
+      <prefix>logdyn_api</prefix>
+      <artifactId>logdyn_api</artifactId>
+    </plugin>
+  </plugins>
+</metadata>
