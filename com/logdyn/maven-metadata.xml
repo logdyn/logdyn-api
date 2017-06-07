@@ -2,9 +2,9 @@
 <metadata>
   <plugins>
     <plugin>
-      <name>logdyn_api Maven Plugin</name>
-      <prefix>logdyn_api</prefix>
-      <artifactId>logdyn_api</artifactId>
+      <name>logdyn-api Maven Plugin</name>
+      <prefix>logdyn-api</prefix>
+      <artifactId>logdyn-api</artifactId>
     </plugin>
   </plugins>
 </metadata>
