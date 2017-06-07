@@ -49,7 +49,6 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	private static final Level DEFAULT_LEVEL = Level.FINE;
 	
 	private Session websocketSession;
-	private UUID websocketUUID;
 	private String httpSessionId;
 
 	@Override
@@ -66,9 +65,9 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			LoggingEndpoint.logToClient(session, LoggingEndpoint.logRecordToJSON(new LogRecord(Level.WARNING, ioe.getMessage())));
 		}
 		
-		this.websocketUUID = UUID.randomUUID();
-		LoggingEndpoint.ENDPOINTS.put(this.websocketUUID, session);
-		logToClient(session, (new JSONObject().put("uuid", this.websocketUUID)).toString());
+		final UUID websocketUUID = UUID.randomUUID();
+		LoggingEndpoint.ENDPOINTS.put(websocketUUID, session);
+		logToClient(session, (new JSONObject().put("uuid", websocketUUID)).toString());
 	}
 	
 	@Override
@@ -145,7 +144,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 */
 	public static void registerWebsocket(final UUID websocketId, final String httpSessionId)
 	{
-		final Session websocketSession = LoggingEndpoint.ENDPOINTS.get(websocketId);
+		final Session websocketSession = LoggingEndpoint.ENDPOINTS.remove(websocketId);
 		Set<Session> set;
 		final Principal userPrincipal = websocketSession.getUserPrincipal();
 		String username = null;
@@ -160,7 +159,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			set = LoggingEndpoint.ENDPOINT_USAGE.get(username);			
 			if (null == set)
 			{
-				set = new ConcurrentHashMap<Session, Void>().keySet();
+				set = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
 				LoggingEndpoint.ENDPOINT_USAGE.put(username, set);
 			}			
 			set.add(websocketSession);
@@ -169,12 +168,10 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		set = LoggingEndpoint.ENDPOINT_USAGE.get(httpSessionId);		
 		if (null == set)
 		{
-			set = new ConcurrentHashMap<Session, Void>().keySet();
+			set = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
 			LoggingEndpoint.ENDPOINT_USAGE.put(httpSessionId, set);
 		}		
 		set.add(websocketSession);
-		
-		LoggingEndpoint.ENDPOINTS.remove(websocketId);
 	}
 
 	/**
