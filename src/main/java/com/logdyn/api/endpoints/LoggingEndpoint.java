@@ -2,11 +2,13 @@ package com.logdyn.api.endpoints;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.security.Principal;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Future;
@@ -35,8 +37,8 @@ import com.logdyn.api.model.LogRecordComparator;
  */
 public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Reader>
 {
-
-	private static final Map<String, Set<Session>> ENDPOINTS = new ConcurrentHashMap<>();
+	private static final Map<UUID, Session> ENDPOINTS = new ConcurrentHashMap<>();
+	private static final Map<String, Set<Session>> ENDPOINT_USAGE = new ConcurrentHashMap<>();
 	private static final Map<String, SortedSet<LogRecord>> MESSAGES = new ConcurrentHashMap<>();
 	
 	private static final String TIMESTAMP_LABEL = "timestamp";
@@ -46,22 +48,26 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	
 	private static final Level DEFAULT_LEVEL = Level.FINE;
 	
-	private Session session;
+	private Session websocketSession;
 	private String httpSessionId;
 
 	@Override
 	public void onOpen(final Session session, final EndpointConfig config)
 	{
-		this.session = session;
+		this.websocketSession = session;
 		session.addMessageHandler(Reader.class, this);
 		try
 		{
 			session.getAsyncRemote().setBatchingAllowed(false);
 		}
-		catch (IOException ioe)
+		catch (final IOException ioe)
 		{
 			LoggingEndpoint.logToClient(session, LoggingEndpoint.logRecordToJSON(new LogRecord(Level.WARNING, ioe.getMessage())));
 		}
+		
+		final UUID websocketUUID = UUID.randomUUID();
+		LoggingEndpoint.ENDPOINTS.put(websocketUUID, session);
+		logToClient(session, (new JSONObject().put("uuid", websocketUUID)).toString());
 	}
 	
 	@Override
@@ -72,20 +78,20 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		if (jsonObject.has("httpSessionId"))
 		{
 			this.httpSessionId = jsonObject.getString("httpSessionId");
-			Set<Session> set = LoggingEndpoint.ENDPOINTS.get(this.httpSessionId);
+			Set<Session> set = LoggingEndpoint.ENDPOINT_USAGE.get(this.httpSessionId);
 			if (null == set)
 			{
 				set = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
-				LoggingEndpoint.ENDPOINTS.put(this.httpSessionId, set);
+				LoggingEndpoint.ENDPOINT_USAGE.put(this.httpSessionId, set);
 			}
-			set.add(this.session);
+			set.add(this.websocketSession);
 			
 			final SortedSet<LogRecord> messageQueue = LoggingEndpoint.MESSAGES.get(this.httpSessionId);
 			if (null != messageQueue && !messageQueue.isEmpty())
 			{
-				LoggingEndpoint.logToClient(this.session, new JSONArray(messageQueue).toString());
+				LoggingEndpoint.logToClient(this.websocketSession, new JSONArray(messageQueue).toString());
 			}
-			LoggingEndpoint.log(new LogMessage(this.httpSessionId, Level.FINER, String.format("Logging Session with id '%s' opened", this.session.getId())));
+			LoggingEndpoint.log(new LogMessage(this.httpSessionId, Level.FINER, String.format("Logging Session with id '%s' opened", this.websocketSession.getId())));
 		}
 		else
 		{
@@ -98,15 +104,15 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 						jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));
 				LoggingEndpoint.queueMessage(logMessage);
 				
-				for (Session websocketSession : LoggingEndpoint.ENDPOINTS.get(this.httpSessionId))
+				for (final Session websocketSession : LoggingEndpoint.ENDPOINT_USAGE.get(this.httpSessionId))
 				{
-					if (!this.session.equals(websocketSession))
+					if (!this.websocketSession.equals(websocketSession))
 					{
 						LoggingEndpoint.logToClient(websocketSession, LoggingEndpoint.logRecordToJSON(logMessage));
 					}
 				}
 			}
-			catch (JSONException ex)
+			catch (final JSONException ex)
 			{
 				LoggingEndpoint.log(new LogMessage(this.httpSessionId, Level.WARNING, ex.getMessage()));
 			}
@@ -117,18 +123,55 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	@Override
 	public void onClose(final Session session, final CloseReason closeReason)
 	{
-		final Set<Session> set = LoggingEndpoint.ENDPOINTS.get(this.httpSessionId);
+		final Set<Session> set = LoggingEndpoint.ENDPOINT_USAGE.get(this.httpSessionId);
 		set.remove(session);
 		final LogMessage message = new LogMessage(this.httpSessionId, Level.FINER, String.format("Logging session with id '%s' closed", session.getId()));
 		LoggingEndpoint.queueMessage(message);
 		if (set.isEmpty())
 		{
-			LoggingEndpoint.ENDPOINTS.remove(this.httpSessionId);
+			LoggingEndpoint.ENDPOINT_USAGE.remove(this.httpSessionId);
 		}
 		else
 		{
 			LoggingEndpoint.logToClient(set, message);
 		}
+	}
+	
+	/**
+	 * Used when initially opening a websocket, adds websocket to list of endpoints
+	 * @param websocketId
+	 * @param httpSessionId
+	 */
+	public static void registerWebsocket(final UUID websocketId, final String httpSessionId)
+	{
+		final Session websocketSession = LoggingEndpoint.ENDPOINTS.remove(websocketId);
+		Set<Session> set;
+		final Principal userPrincipal = websocketSession.getUserPrincipal();
+		String username = null;
+		
+		if (null != userPrincipal)
+		{
+			username = userPrincipal.getName();
+		}
+		
+		if (null != username)
+		{
+			set = LoggingEndpoint.ENDPOINT_USAGE.get(username);			
+			if (null == set)
+			{
+				set = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
+				LoggingEndpoint.ENDPOINT_USAGE.put(username, set);
+			}			
+			set.add(websocketSession);
+		}
+		
+		set = LoggingEndpoint.ENDPOINT_USAGE.get(httpSessionId);		
+		if (null == set)
+		{
+			set = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
+			LoggingEndpoint.ENDPOINT_USAGE.put(httpSessionId, set);
+		}		
+		set.add(websocketSession);
 	}
 
 	/**
@@ -152,7 +195,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		// If sessionID is not specified, notify all endpoints
 		if (null == sessionId)
 		{
-			for (final Set<Session> websocketSessions : LoggingEndpoint.ENDPOINTS.values())
+			for (final Set<Session> websocketSessions : LoggingEndpoint.ENDPOINT_USAGE.values())
 			{
 				LoggingEndpoint.logToClient(websocketSessions, logRecord);
 			}
@@ -165,7 +208,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		}
 		else
 		{
-			final Set<Session> websocketSessions = LoggingEndpoint.ENDPOINTS.get(sessionId);
+			final Set<Session> websocketSessions = LoggingEndpoint.ENDPOINT_USAGE.get(sessionId);
 			if (null != websocketSessions)
 			{
 				LoggingEndpoint.logToClient(websocketSessions, logRecord);
