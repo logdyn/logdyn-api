@@ -2,10 +2,13 @@ package com.logdyn.api.model;
 
 import java.util.logging.Level;
 
+import org.json.JSONObject;
+import org.json.JSONString;
+
 /**
  * Created by Matt on 01/06/2017.
  */
-public class JsLevel extends Level
+public class JsLevel extends Level implements JSONString
 {
     public static final JsLevel ERROR = new JsLevel("ERROR", 950);
 
@@ -22,4 +25,10 @@ public class JsLevel extends Level
     {
         return Level.parse(name);
     }
+
+	@Override
+	public String toJSONString()
+	{
+		return JSONObject.quote(this.getName());
+	}
 }
