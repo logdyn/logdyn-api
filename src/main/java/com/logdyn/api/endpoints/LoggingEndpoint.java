@@ -3,6 +3,7 @@ package com.logdyn.api.endpoints;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -23,6 +24,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
+import com.logdyn.api.model.JsLevel;
 import com.logdyn.api.model.LogMessage;
 import com.logdyn.api.model.LogRecordComparator;
 
@@ -73,7 +75,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			Set<Session> set = LoggingEndpoint.ENDPOINTS.get(this.httpSessionId);
 			if (null == set)
 			{
-				set = new ConcurrentHashMap<Session, Void>().keySet();
+				set = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
 				LoggingEndpoint.ENDPOINTS.put(this.httpSessionId, set);
 			}
 			set.add(this.session);
@@ -267,7 +269,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		}
 		else
 		{
-			return Level.parse(levelName);
+			return JsLevel.parse(levelName);
 		}
 	}
 	
