@@ -1,18 +1,17 @@
 package com.logdyn.api.endpoints;
 
+import com.logdyn.api.model.LogMessage;
+import com.logdyn.api.model.LogRecordComparator;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import javax.websocket.Session;
 import java.util.Collections;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.logging.LogRecord;
-
-import javax.websocket.Session;
-
-import org.json.JSONObject;
-
-import com.logdyn.api.model.LogMessage;
-import com.logdyn.api.model.LogRecordComparator;
 
 class LogSession
 {
@@ -52,10 +51,23 @@ class LogSession
     	{
     		if (!session.equals(exclude))
     		{
-    			session.getAsyncRemote().sendText(LogSession.logRecordToJSON(logRecord));
+    			session.getAsyncRemote().sendText(LogSession.logRecordToJSON(logRecord).toString());
     		}
     	}
     }
+
+    public void sendMessages(final Session session)
+	{
+		if (!this.messages.isEmpty())
+		{
+			final JSONArray jsonArray = new JSONArray();
+			for (final LogRecord logRecord : this.messages)
+			{
+				jsonArray.put(logRecordToJSON(logRecord));
+			}
+			session.getAsyncRemote().sendText(jsonArray.toString());
+		}
+	}
     
     private static String getSessionId(final LogRecord logRecord)
 	{
@@ -69,13 +81,12 @@ class LogSession
 		return sessionId;
 	}
     
-    private static String logRecordToJSON(final LogRecord logRecord)
+    private static JSONObject logRecordToJSON(final LogRecord logRecord)
 	{
 		return new JSONObject()
 				.put(LogSession.SESSION_ID_LABEL, LogSession.getSessionId(logRecord))
 				.put(LogSession.LEVEL_LABEL, logRecord.getLevel().getName())
 				.put(LogSession.MESSAGE_LABEL, logRecord.getMessage())
-				.put(LogSession.TIMESTAMP_LABEL, Long.valueOf(logRecord.getMillis()))
-				.toString();
+				.put(LogSession.TIMESTAMP_LABEL, Long.valueOf(logRecord.getMillis()));
 	}
 }

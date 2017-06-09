@@ -1,24 +1,19 @@
 package com.logdyn.api.endpoints;
 
+import com.logdyn.api.model.JsLevel;
+import com.logdyn.api.model.LogMessage;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
+import javax.servlet.http.HttpSession;
+import javax.websocket.*;
 import java.io.Reader;
 import java.security.Principal;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-
-import javax.servlet.http.HttpSession;
-import javax.websocket.CloseReason;
-import javax.websocket.Endpoint;
-import javax.websocket.EndpointConfig;
-import javax.websocket.MessageHandler;
-import javax.websocket.Session;
-
-import org.json.JSONObject;
-import org.json.JSONTokener;
-
-import com.logdyn.api.model.JsLevel;
-import com.logdyn.api.model.LogMessage;
 
 /**
  * Endpoint Class used to log messages and send them to the client
@@ -55,7 +50,9 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			this.httpSessionId = ((HttpSession) httpSession).getId();
 		}		
 
-		getLogSession().addWebsocketSession(session);
+		final LogSession logSession = this.getLogSession();
+		logSession.addWebsocketSession(session);
+		logSession.sendMessages(session);
 	}
 
 	private LogSession getLogSession()
@@ -96,47 +93,41 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	public void onMessage(final Reader reader)
 	{
 		final JSONObject jsonObject = new JSONObject(new JSONTokener(reader));
-		
-		final LogRecord logRecord = new LogMessage(jsonObject.optString(LoggingEndpoint.SESSION_ID_LABEL, null),
-				LoggingEndpoint.parseLevel(jsonObject),
-				jsonObject.optString(LoggingEndpoint.MESSAGE_LABEL, null),
-				jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));
-		
-		getLogSession().logMessage(logRecord, this.websocketSession);
+		LogRecord logRecord;
+		try
+		{
+			logRecord = new LogMessage(this.httpSessionId,
+					LoggingEndpoint.parseLevel(jsonObject),
+					jsonObject.getString(LoggingEndpoint.MESSAGE_LABEL),
+					jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));
+			this.getLogSession().logMessage(logRecord, this.websocketSession);
+		}
+		catch (JSONException e)
+		{
+			logRecord = new LogMessage(this.httpSessionId, Level.WARNING,
+					"Failed to parse Log Record from client");
+			this.getLogSession().logMessage(logRecord, null);
+		}
 	}
 
 	@Override
 	public void onClose(final Session session, final CloseReason closeReason)
 	{
-		final LogSession logSession = getLogSession();
-		logSession.removeWebsocketSession(session);
-		
-		if (logSession.isSessionsEmpty())
-		{
-			if (null != this.username)
-			{
-				LoggingEndpoint.USER_SESSIONS.remove(this.username);		
-			}
-			else if (null != httpSessionId)
-			{
-				LoggingEndpoint.NON_USER_SESSIONS.remove(this.httpSessionId);
-			}
-		}
-		
+		this.getLogSession().removeWebsocketSession(session);
 		LoggingEndpoint.ROOT_SESSION.removeWebsocketSession(session);
 	}
 	
 	public static void log(final LogRecord logRecord)
 	{
 		String httpSessionId = null;
-		final String username = null;
+		final String username = null; //TODO get username from logRecord
 		
 		if (logRecord instanceof LogMessage)
 		{
 			httpSessionId = ((LogMessage) logRecord).getSessionId();
 		}
 		
-		getLogSession(username, httpSessionId).logMessage(logRecord);
+		LoggingEndpoint.getLogSession(username, httpSessionId).logMessage(logRecord);
 	}
 
 	public static void clearSession(final String httpSessionId)
@@ -156,5 +147,4 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			return JsLevel.parse(levelName);
 		}
 	}
-
 }
