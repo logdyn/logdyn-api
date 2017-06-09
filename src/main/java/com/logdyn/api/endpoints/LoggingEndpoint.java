@@ -48,6 +48,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		final Principal userPrinciple = session.getUserPrincipal();
 		this.username = (null != userPrinciple) ? userPrinciple.getName() : null;
 		this.websocketSession = session;
+		this.websocketSession.addMessageHandler(Reader.class, this);
 		final Object httpSession = config.getUserProperties().get(HttpSession.class.getName());
 		if (httpSession instanceof HttpSession)
 		{
