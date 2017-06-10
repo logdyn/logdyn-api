@@ -1,7 +1,5 @@
 package com.logdyn.api.model;
 
-import com.sun.istack.internal.Nullable;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.security.Principal;
@@ -29,28 +27,25 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 	}
 
 	public LogMessage (final Level level, final String message,
-					   @Nullable final HttpServletRequest request)
+					   final HttpServletRequest request)
 	{
 		this(level, message, request, System.currentTimeMillis());
 	}
 
 	public LogMessage (final Level level, final String message,
-					   @Nullable final Principal userPrinciple,
-					   @Nullable final HttpSession session)
+					   final Principal userPrinciple, final HttpSession session)
 	{
 		this(level, message, userPrinciple, session, System.currentTimeMillis());
 	}
 
 	public LogMessage (final Level level, final String message,
-					   @Nullable final String username,
-					   @Nullable final String sessionId)
+					   final String username, final String sessionId)
 	{
 		this(level, message, username, sessionId, System.currentTimeMillis());
 	}
 	
 	public LogMessage (final Level level, final String message,
-					   @Nullable final HttpServletRequest request,
-					   final long timestamp)
+					   final HttpServletRequest request, final long timestamp)
 	{
 		this(level, message,
 				null != request ? request.getUserPrincipal() : null,
@@ -59,8 +54,7 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 	}
 
 	public LogMessage (final Level level, final String message,
-					   @Nullable final Principal userPrinciple,
-					   @Nullable final HttpSession session,
+					   final Principal userPrinciple, final HttpSession session,
 					   final long timestamp)
 	{
 		this(level, message,
@@ -70,8 +64,7 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 	}
 
 	public LogMessage (final Level level, final String message,
-					   @Nullable final String username,
-					   @Nullable final String sessionId,
+					   final String username, final String sessionId,
 					   final long timestamp)
 	{
 		super(level, message);
