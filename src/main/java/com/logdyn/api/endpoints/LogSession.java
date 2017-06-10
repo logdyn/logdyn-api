@@ -5,45 +5,82 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.websocket.Session;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.Future;
 import java.util.logging.LogRecord;
 
 class LogSession
 {
-	private static final String TIMESTAMP_LABEL = "timestamp";
-	private static final String MESSAGE_LABEL = "message";
+	/** The level label used for JSON Objects */
 	private static final String LEVEL_LABEL = "level";
-	
+	/** The message label used for JSON Objects */
+	private static final String MESSAGE_LABEL = "message";
+	/** The timestamp label used for JSON Objects */
+	private static final String TIMESTAMP_LABEL = "timestamp";
+
+	/** the sessions that are part of this LogSession */
 	private final Set<Session> sessions = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
+	/** The message history for this LogSession */
 	private final SortedSet<LogRecord> messages = new ConcurrentSkipListSet<>(LogRecordComparator.COMPARATOR);
-    
+
+	/**
+	 * Adds a websocket session that will recieve LogRecords sent to this LogSession.
+	 * @param session the session to add
+	 * @return true if the session was added as defined by {@link Collection#add}
+	 * @see Collection#add
+	 */
 	public boolean addWebsocketSession(final Session session)
     {
     	return this.sessions.add(session);
     }
-    
-    public boolean removeWebsocketSession(final Session session)
+
+	/**
+	 * Removes a websocket session from this LogSession.
+	 * @param session the session to remove
+	 * @return true if the session was removed as defined by {@link Collection#remove}
+	 * @see Collection#remove
+	 */
+	public boolean removeWebsocketSession(final Session session)
     {
     	return this.sessions.remove(session);
     }
-    
-    public boolean isSessionsEmpty()
+
+	/**
+	 * Returns true if this LogSession contains no websocket sessions
+	 * @return true if this LogSession contains no websocket sessions as defined by {@link Collection#isEmpty()}
+	 * @see Collection#isEmpty()
+	 */
+	public boolean isSessionsEmpty()
     {
     	return this.sessions.isEmpty();
     }
-    
-    public void logMessage(final LogRecord logRecord)
+
+	/**
+	 * Stores the provided {@link LogRecord} and sends to the websocket sessions
+	 * contained by this LogSession.
+	 * @param logRecord the {@link LogRecord} to send to this LogSessions websockets.
+	 * @return true if the logRecord was stored as defined by {@link Collection#add}
+	 */
+	public boolean logMessage(final LogRecord logRecord)
     {
-    	this.logMessage(logRecord, null);
+    	return this.logMessage(logRecord, null);
     }
-    
-    public void logMessage(final LogRecord logRecord, final Session exclude)
+
+	/**
+	 * Stores the provided {@link LogRecord} and sends to the websocket sessions
+	 * contained by this LogSession, excluding the provided session.
+	 * @param logRecord the {@link LogRecord} to send to this LogSessions websockets.
+	 * @param exclude a {@link javax.websocket.Session} to exclude or {@code null}
+	 * @return true if the logRecord was stored as defined by {@link Collection#add}
+	 */
+	public boolean logMessage(final LogRecord logRecord, final Session exclude)
     {
-    	this.messages.add(logRecord);
+    	final boolean result = this.messages.add(logRecord);
     	
     	for (final Session session : sessions)
     	{
@@ -52,9 +89,15 @@ class LogSession
     			session.getAsyncRemote().sendText(LogSession.logRecordToJSON(logRecord).toString());
     		}
     	}
+    	return result;
     }
 
-    public void sendMessages(final Session session)
+	/**
+	 * sends this LogSessions message history to the specified websocket session
+	 * @param session the session to send this LogSessions messages to
+	 * @return the {@link Future} object representing the send operation.
+	 */
+	public Future<Void> sendMessages(final Session session)
 	{
 		if (!this.messages.isEmpty())
 		{
@@ -63,10 +106,16 @@ class LogSession
 			{
 				jsonArray.put(logRecordToJSON(logRecord));
 			}
-			session.getAsyncRemote().sendText(jsonArray.toString());
+			return session.getAsyncRemote().sendText(jsonArray.toString());
 		}
+		return null;
 	}
-    
+
+	/**
+	 * creates a {@link JSONObject} representing a provided {@link LogRecord}.
+	 * @param logRecord the {@link LogRecord} to base the JSONObject on.
+	 * @return the JSONObject with the values from the LogRecord.
+	 */
     private static JSONObject logRecordToJSON(final LogRecord logRecord)
 	{
 		return new JSONObject()
