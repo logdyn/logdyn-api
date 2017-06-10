@@ -1,6 +1,10 @@
 package com.logdyn.api.model;
 
+import com.sun.istack.internal.Nullable;
+
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+import java.security.Principal;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -14,70 +18,71 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 
 	/** Generated serialID **/
 	private static final long serialVersionUID = -9093297911420796177L;
-
-	private static final Level DEFAULT_LEVEL = Level.FINE;
 	
 	private final String sessionId;
+	private final String username;
 	private int hashCode = -1;
-	
-	/**
-	 * Constructor
-	 * Defaults level to FINE ({@link java.util.logging.Level#FINE})
-	 * @param message The message to log
-	 */
-	public LogMessage(final String message)
+
+	public LogMessage (final Level level, final String message)
 	{
-		this(LogMessage.DEFAULT_LEVEL, message);
-	}
-	
-	/**
-	 * Constructor
-	 * No session ID is specified, takes a level and message
-	 * @param level The log level, see {@link java.util.logging.Level}
-	 * @param message The message to be displayed
-	 */
-	public LogMessage(final Level level, final String message)
-	{
-		this((String) null, level, message);
-	}
-	
-	/**
-	 * Constructor
-	 * Uses the {@link javax.servlet.http.HttpServletRequest#getRequestedSessionId()} to get the session ID of the request
-	 * @param request The HttpServletRequest
-	 * @param level The log level, see {@link java.util.logging.Level}
-	 * @param message The message to be displayed
-	 */
-	public LogMessage(final HttpServletRequest request, final Level level, final String message)
-	{
-		this(request.getRequestedSessionId(), level, message);
-	}
-	
-	/**
-	 * Constructor
-	 * Populates message with current system time in milliseconds
-	 * @param sessionId The HttpSessionId
-	 * @param level The log level, see {@link java.util.logging.Level}
-	 * @param message The message to be displayed
-	 */
-	public LogMessage(final String sessionId, final Level level, final String message)
-	{
-		this(sessionId, level, message, System.currentTimeMillis());
+		this(level, message, (String) null, null);
 	}
 
-	/**
-	 * Constructor
-	 * Ideally other constructors should be used
-	 * @param sessionId The HttpSessionId
-	 * @param level The log level, see {@link java.util.logging.Level}
-	 * @param message The message to be displayed
-	 * @param timestamp The timestamp the message is logged at (in milliseconds)
-	 */
-	public LogMessage(final String sessionId, final Level level, final String message, final long timestamp)
+	public LogMessage (final Level level, final String message,
+					   @Nullable final HttpServletRequest request)
+	{
+		this(level, message, request, System.currentTimeMillis());
+	}
+
+	public LogMessage (final Level level, final String message,
+					   @Nullable final Principal userPrinciple,
+					   @Nullable final HttpSession session)
+	{
+		this(level, message, userPrinciple, session, System.currentTimeMillis());
+	}
+
+	public LogMessage (final Level level, final String message,
+					   @Nullable final String username,
+					   @Nullable final String sessionId)
+	{
+		this(level, message, username, sessionId, System.currentTimeMillis());
+	}
+	
+	public LogMessage (final Level level, final String message,
+					   @Nullable final HttpServletRequest request,
+					   final long timestamp)
+	{
+		this(level, message,
+				null != request ? request.getUserPrincipal() : null,
+				null != request ? request.getSession(false) : null,
+				timestamp);
+	}
+
+	public LogMessage (final Level level, final String message,
+					   @Nullable final Principal userPrinciple,
+					   @Nullable final HttpSession session,
+					   final long timestamp)
+	{
+		this(level, message,
+				null != userPrinciple ? userPrinciple.getName() : null,
+				null != session ? session.getId() : null,
+				timestamp);
+	}
+
+	public LogMessage (final Level level, final String message,
+					   @Nullable final String username,
+					   @Nullable final String sessionId,
+					   final long timestamp)
 	{
 		super(level, message);
-		this.sessionId = sessionId;
 		this.setMillis(timestamp);
+		this.username = username;
+		this.sessionId = sessionId;
+	}
+
+	public String getUsername()
+	{
+		return this.username;
 	}
 
 	/**
@@ -91,7 +96,7 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 	@Override
 	public int compareTo(LogRecord other)
 	{
-		return LogRecordComparator.COMPARATOR.compare(this, other);
+		return LogRecordComparator.compareTo(this, other);
 	}
 
 	/**
@@ -105,6 +110,7 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 			this.hashCode = Objects.hash(
 					Long.valueOf(this.getMillis()),
 					this.getMessage(),
+					this.username,
 					this.sessionId,
 					this.getLevel());
 		}
@@ -134,6 +140,7 @@ public class LogMessage extends LogRecord implements Comparable<LogRecord>
 			final LogMessage otherMessage = (LogMessage) other;
 			return this.getMillis() == otherMessage.getMillis()
 					&& this.getMessage().equals(otherMessage.getMessage())
+					&& Objects.equals(this.username, otherMessage.username)// use Objects.equals as username can be null
 					&& Objects.equals(this.sessionId, otherMessage.sessionId)// use Objects.equals as sessionId can be null
 					&& this.getLevel().equals(otherMessage.getLevel());
 		}

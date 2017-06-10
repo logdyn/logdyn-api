@@ -71,7 +71,6 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 				result = new LogSession();
 				LoggingEndpoint.USER_SESSIONS.put(username, result);
 			}
-			
 		}
 		else if (null != httpSessionId)
 		{
@@ -96,16 +95,17 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		LogRecord logRecord;
 		try
 		{
-			logRecord = new LogMessage(this.httpSessionId,
+			logRecord = new LogMessage(
 					LoggingEndpoint.parseLevel(jsonObject),
 					jsonObject.getString(LoggingEndpoint.MESSAGE_LABEL),
+					this.username, this.httpSessionId,
 					jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));
 			this.getLogSession().logMessage(logRecord, this.websocketSession);
 		}
 		catch (JSONException e)
 		{
-			logRecord = new LogMessage(this.httpSessionId, Level.WARNING,
-					"Failed to parse Log Record from client");
+			logRecord = new LogMessage(Level.WARNING,
+					"Failed to parse Log Record from client", this.username, this.httpSessionId);
 			this.getLogSession().logMessage(logRecord, null);
 		}
 	}
@@ -120,11 +120,12 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	public static void log(final LogRecord logRecord)
 	{
 		String httpSessionId = null;
-		final String username = null; //TODO get username from logRecord
+		String username = null;
 		
 		if (logRecord instanceof LogMessage)
 		{
 			httpSessionId = ((LogMessage) logRecord).getSessionId();
+			username = ((LogMessage) logRecord).getUsername();
 		}
 		
 		LoggingEndpoint.getLogSession(username, httpSessionId).logMessage(logRecord);
