@@ -25,7 +25,6 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	private static final String TIMESTAMP_LABEL = "timestamp";
 	private static final String MESSAGE_LABEL = "message";
 	private static final String LEVEL_LABEL = "level";
-	private static final String SESSION_ID_LABEL = "sessionId";
 	
 	private static final Map<String, LogSession> USER_SESSIONS = new ConcurrentHashMap<>();
 	private static final Map<String, LogSession> NON_USER_SESSIONS = new ConcurrentHashMap<>();
@@ -40,15 +39,16 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	@Override
 	public void onOpen(final Session session, final EndpointConfig config)
 	{
+		session.addMessageHandler(Reader.class, this);
+		this.websocketSession = session;
+
 		final Principal userPrinciple = session.getUserPrincipal();
 		this.username = (null != userPrinciple) ? userPrinciple.getName() : null;
-		this.websocketSession = session;
-		this.websocketSession.addMessageHandler(Reader.class, this);
 		final Object httpSession = config.getUserProperties().get(HttpSession.class.getName());
 		if (httpSession instanceof HttpSession)
 		{
 			this.httpSessionId = ((HttpSession) httpSession).getId();
-		}		
+		}
 
 		final LogSession logSession = this.getLogSession();
 		logSession.addWebsocketSession(session);
