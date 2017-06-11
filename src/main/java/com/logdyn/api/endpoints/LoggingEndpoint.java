@@ -52,14 +52,92 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 
 		final LogSession logSession = this.getLogSession();
 		logSession.addWebsocketSession(session);
-		logSession.sendMessages(session);
+		LoggingEndpoint.ROOT_SESSION.addWebsocketSession(session);
+		logSession.sendMessages(session, LoggingEndpoint.ROOT_SESSION);
+	}
+
+	@Override
+	public void onMessage(final Reader reader)
+	{
+		final JSONObject jsonObject = new JSONObject(new JSONTokener(reader));
+		LogRecord logRecord;
+		try
+		{
+			logRecord = new LogMessage(
+					LoggingEndpoint.parseLevel(jsonObject),
+					jsonObject.getString(LoggingEndpoint.MESSAGE_LABEL),
+					this.username, this.httpSessionId,
+					jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));
+			this.getLogSession().logMessage(logRecord, this.websocketSession);
+		}
+		catch (JSONException e)
+		{
+			logRecord = new LogMessage(Level.WARNING,
+					"Failed to parse Log Record from client", this.username, this.httpSessionId);
+			this.getLogSession().logMessage(logRecord, null);
+		}
+	}
+
+	@Override
+	public void onError(Session session, Throwable thr)
+	{
+		final LogSession logSession = this.getLogSession();
+		final LogRecord logRecord = new LogRecord(Level.SEVERE, thr.getLocalizedMessage());
+		logRecord.setMillis(System.currentTimeMillis());
+		try
+		{
+			logSession.logMessage(logRecord);
+		}
+		catch (Exception e)
+		{
+			logSession.logMessage(logRecord, session);
+		}
+		super.onError(session, thr);
+	}
+
+	@Override
+	public void onClose(final Session session, final CloseReason closeReason)
+	{
+		final LogSession logSession = this.getLogSession();
+		logSession.removeWebsocketSession(session);
+		if (logSession != LoggingEndpoint.ROOT_SESSION)
+		{
+			LoggingEndpoint.ROOT_SESSION.removeWebsocketSession(session);
+			logSession.logMessage(
+					new LogMessage(Level.FINER, "Session closed due to " + closeReason.getReasonPhrase()),
+					session);
+		}
+	}
+	
+	public static boolean log(final LogRecord logRecord)
+	{
+		String httpSessionId = null;
+		String username = null;
+		
+		if (logRecord instanceof LogMessage)
+		{
+			httpSessionId = ((LogMessage) logRecord).getSessionId();
+			username = ((LogMessage) logRecord).getUsername();
+		}
+		
+		return LoggingEndpoint.getLogSession(username, httpSessionId).logMessage(logRecord);
+	}
+
+	public static boolean clearSession(final String httpSessionId)
+	{
+		return LoggingEndpoint.NON_USER_SESSIONS.remove(httpSessionId) != null;
+	}
+
+	public static boolean clearUser(final String username)
+	{
+		return LoggingEndpoint.USER_SESSIONS.remove(username) != null;
 	}
 
 	private LogSession getLogSession()
 	{
 		return LoggingEndpoint.getLogSession(this.username, this.httpSessionId);
 	}
-	
+
 	private static LogSession getLogSession(final String username, final String httpSessionId)
 	{
 		LogSession result;
@@ -86,54 +164,6 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			result = LoggingEndpoint.ROOT_SESSION;
 		}
 		return result;
-	}
-
-	@Override
-	public void onMessage(final Reader reader)
-	{
-		final JSONObject jsonObject = new JSONObject(new JSONTokener(reader));
-		LogRecord logRecord;
-		try
-		{
-			logRecord = new LogMessage(
-					LoggingEndpoint.parseLevel(jsonObject),
-					jsonObject.getString(LoggingEndpoint.MESSAGE_LABEL),
-					this.username, this.httpSessionId,
-					jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));
-			this.getLogSession().logMessage(logRecord, this.websocketSession);
-		}
-		catch (JSONException e)
-		{
-			logRecord = new LogMessage(Level.WARNING,
-					"Failed to parse Log Record from client", this.username, this.httpSessionId);
-			this.getLogSession().logMessage(logRecord, null);
-		}
-	}
-
-	@Override
-	public void onClose(final Session session, final CloseReason closeReason)
-	{
-		this.getLogSession().removeWebsocketSession(session);
-		LoggingEndpoint.ROOT_SESSION.removeWebsocketSession(session);
-	}
-	
-	public static void log(final LogRecord logRecord)
-	{
-		String httpSessionId = null;
-		String username = null;
-		
-		if (logRecord instanceof LogMessage)
-		{
-			httpSessionId = ((LogMessage) logRecord).getSessionId();
-			username = ((LogMessage) logRecord).getUsername();
-		}
-		
-		LoggingEndpoint.getLogSession(username, httpSessionId).logMessage(logRecord);
-	}
-
-	public static void clearSession(final String httpSessionId)
-	{
-		LoggingEndpoint.NON_USER_SESSIONS.remove(httpSessionId);
 	}
 	
 	private static Level parseLevel(final JSONObject jsonObject)

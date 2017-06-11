@@ -5,10 +5,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.websocket.Session;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Set;
-import java.util.SortedSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Future;
@@ -80,35 +77,55 @@ class LogSession
 	 */
 	public boolean logMessage(final LogRecord logRecord, final Session exclude)
     {
-    	final boolean result = this.messages.add(logRecord);
-    	
-    	for (final Session session : sessions)
+    	boolean result = this.messages.add(logRecord);
+
+    	if (result)
     	{
-    		if (!session.equals(exclude))
-    		{
-    			session.getAsyncRemote().sendText(LogSession.logRecordToJSON(logRecord).toString());
-    		}
-    	}
+    		for (final Session session : this.sessions)
+			{
+				if (!session.equals(exclude))
+				{
+					session.getAsyncRemote().sendText(LogSession.logRecordToJSON(logRecord).toString());
+				}
+			}
+		}
     	return result;
     }
 
 	/**
 	 * sends this LogSessions message history to the specified websocket session
 	 * @param session the session to send this LogSessions messages to
+	 * @param otherSession another Session to get messages to also send.
 	 * @return the {@link Future} object representing the send operation.
 	 */
-	public Future<Void> sendMessages(final Session session)
+	public Future<Void> sendMessages(final Session session, final LogSession otherSession)
 	{
-		if (!this.messages.isEmpty())
+		final SortedSet<LogRecord> messages;
+		if (null == otherSession || this == otherSession)
+		{
+			messages = this.messages;
+		}
+		else
+		{
+			messages = new TreeSet<>(this.messages);
+			messages.addAll(otherSession.messages);
+		}
+		if (!messages.isEmpty())
 		{
 			final JSONArray jsonArray = new JSONArray();
-			for (final LogRecord logRecord : this.messages)
+			for (final LogRecord logRecord : messages)
 			{
 				jsonArray.put(logRecordToJSON(logRecord));
 			}
 			return session.getAsyncRemote().sendText(jsonArray.toString());
 		}
 		return null;
+	}
+
+	public void addExistingSession(final LogSession logSession)
+	{
+		this.messages.addAll(logSession.messages);
+		this.sessions.addAll(logSession.sessions);
 	}
 
 	/**
