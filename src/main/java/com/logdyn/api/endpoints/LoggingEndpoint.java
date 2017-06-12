@@ -1,7 +1,7 @@
 package com.logdyn.api.endpoints;
 
-import com.logdyn.api.model.JsLevel;
 import com.logdyn.api.model.LogMessage;
+import com.logdyn.api.model.LogRecordUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -22,15 +22,9 @@ import java.util.logging.LogRecord;
  */
 public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Reader>
 {
-	private static final String TIMESTAMP_LABEL = "timestamp";
-	private static final String MESSAGE_LABEL = "message";
-	private static final String LEVEL_LABEL = "level";
-	
 	private static final Map<String, LogSession> USER_SESSIONS = new ConcurrentHashMap<>();
 	private static final Map<String, LogSession> NON_USER_SESSIONS = new ConcurrentHashMap<>();
 	private static final LogSession ROOT_SESSION = new LogSession();
-	
-	private static final Level DEFAULT_LEVEL = Level.FINE;
 	
 	private String httpSessionId = null;
 	private String username;
@@ -63,11 +57,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		LogRecord logRecord;
 		try
 		{
-			logRecord = new LogMessage(
-					LoggingEndpoint.parseLevel(jsonObject),
-					jsonObject.getString(LoggingEndpoint.MESSAGE_LABEL),
-					this.username, this.httpSessionId,
-					jsonObject.optLong(LoggingEndpoint.TIMESTAMP_LABEL, System.currentTimeMillis()));
+			logRecord = LogRecordUtils.fromJSON(jsonObject, this.username, this.httpSessionId);
 			this.getLogSession().logMessage(logRecord, this.websocketSession);
 		}
 		catch (JSONException e)
@@ -164,18 +154,5 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			result = LoggingEndpoint.ROOT_SESSION;
 		}
 		return result;
-	}
-	
-	private static Level parseLevel(final JSONObject jsonObject)
-	{
-		final String levelName = jsonObject.optString(LoggingEndpoint.LEVEL_LABEL, null);
-		if(null == levelName)
-		{
-			return LoggingEndpoint.DEFAULT_LEVEL;
-		}
-		else
-		{
-			return JsLevel.parse(levelName);
-		}
 	}
 }

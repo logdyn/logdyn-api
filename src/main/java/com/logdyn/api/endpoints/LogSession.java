@@ -1,8 +1,7 @@
 package com.logdyn.api.endpoints;
 
 import com.logdyn.api.model.LogRecordComparator;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.logdyn.api.model.LogRecordUtils;
 
 import javax.websocket.Session;
 import java.util.*;
@@ -13,13 +12,6 @@ import java.util.logging.LogRecord;
 
 class LogSession
 {
-	/** The level label used for JSON Objects */
-	private static final String LEVEL_LABEL = "level";
-	/** The message label used for JSON Objects */
-	private static final String MESSAGE_LABEL = "message";
-	/** The timestamp label used for JSON Objects */
-	private static final String TIMESTAMP_LABEL = "timestamp";
-
 	/** the sessions that are part of this LogSession */
 	private final Set<Session> sessions = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
 	/** The message history for this LogSession */
@@ -85,7 +77,7 @@ class LogSession
 			{
 				if (!session.equals(exclude))
 				{
-					session.getAsyncRemote().sendText(LogSession.logRecordToJSON(logRecord).toString());
+					session.getAsyncRemote().sendText(LogRecordUtils.toJSON(logRecord));
 				}
 			}
 		}
@@ -112,12 +104,7 @@ class LogSession
 		}
 		if (!messages.isEmpty())
 		{
-			final JSONArray jsonArray = new JSONArray();
-			for (final LogRecord logRecord : messages)
-			{
-				jsonArray.put(logRecordToJSON(logRecord));
-			}
-			return session.getAsyncRemote().sendText(jsonArray.toString());
+			return session.getAsyncRemote().sendText(LogRecordUtils.toJSON(messages));
 		}
 		return null;
 	}
@@ -126,18 +113,5 @@ class LogSession
 	{
 		this.messages.addAll(logSession.messages);
 		this.sessions.addAll(logSession.sessions);
-	}
-
-	/**
-	 * creates a {@link JSONObject} representing a provided {@link LogRecord}.
-	 * @param logRecord the {@link LogRecord} to base the JSONObject on.
-	 * @return the JSONObject with the values from the LogRecord.
-	 */
-    private static JSONObject logRecordToJSON(final LogRecord logRecord)
-	{
-		return new JSONObject()
-				.put(LogSession.LEVEL_LABEL, logRecord.getLevel().getName())
-				.put(LogSession.MESSAGE_LABEL, logRecord.getMessage())
-				.put(LogSession.TIMESTAMP_LABEL, Long.valueOf(logRecord.getMillis()));
 	}
 }
