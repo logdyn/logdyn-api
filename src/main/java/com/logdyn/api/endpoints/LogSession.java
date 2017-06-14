@@ -109,9 +109,16 @@ class LogSession
 		return null;
 	}
 
-	public void addExistingSession(final LogSession logSession)
+	/**
+	 * Adds the messages and websocket session from another LogSession to this one.
+	 * @param logSession the other LogSession to add to this one
+	 * @return true if the LogSession changes as a result of the call
+	 */
+	public boolean addExistingSession(final LogSession logSession)
 	{
-		this.messages.addAll(logSession.messages);
-		this.sessions.addAll(logSession.sessions);
+		boolean result;
+		result  = this.messages.addAll(logSession.messages);
+		result |= this.sessions.addAll(logSession.sessions);
+		return result;
 	}
 }

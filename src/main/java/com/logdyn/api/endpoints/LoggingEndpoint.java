@@ -30,26 +30,35 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	private String username;
 	private Session websocketSession;
 
+	/**
+	 *  {@inheritDoc}
+	 */
 	@Override
 	public void onOpen(final Session session, final EndpointConfig config)
 	{
+		//add its self as a message handler. this allows access to username & httpSessionId fields
 		session.addMessageHandler(Reader.class, this);
 		this.websocketSession = session;
 
 		final Principal userPrinciple = session.getUserPrincipal();
 		this.username = (null != userPrinciple) ? userPrinciple.getName() : null;
+		//get httpSession from config. see LoggingEndpointConfigurator class.
 		final Object httpSession = config.getUserProperties().get(HttpSession.class.getName());
 		if (httpSession instanceof HttpSession)
 		{
 			this.httpSessionId = ((HttpSession) httpSession).getId();
 		}
-
+		// add websocket session to relevant logSession
 		final LogSession logSession = this.getLogSession();
 		logSession.addWebsocketSession(session);
+		//also add every session to ROOT so they can receive messages to all
 		LoggingEndpoint.ROOT_SESSION.addWebsocketSession(session);
-		logSession.sendMessages(session, LoggingEndpoint.ROOT_SESSION);
+		logSession.sendMessages(session, LoggingEndpoint.ROOT_SESSION); //send message history
 	}
 
+	/**
+	 *  {@inheritDoc}
+	 */
 	@Override
 	public void onMessage(final Reader reader)
 	{
@@ -68,23 +77,29 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		}
 	}
 
+	/**
+	 *  {@inheritDoc}
+	 */
 	@Override
 	public void onError(Session session, Throwable thr)
 	{
-		final LogSession logSession = this.getLogSession();
 		final LogRecord logRecord = new LogRecord(Level.SEVERE, thr.getLocalizedMessage());
-		logRecord.setMillis(System.currentTimeMillis());
 		try
 		{
-			logSession.logMessage(logRecord);
+			session.getAsyncRemote().sendText(LogRecordUtils.toJSON(logRecord));
 		}
 		catch (Exception e)
 		{
-			logSession.logMessage(logRecord, session);
+			//an error happened while sending a message through the errored websocket
+			//thats fine. just ignore it and send to the other websockets.
 		}
+		this.getLogSession().logMessage(logRecord, session);
 		super.onError(session, thr);
 	}
 
+	/**
+	 *  {@inheritDoc}
+	 */
 	@Override
 	public void onClose(final Session session, final CloseReason closeReason)
 	{
@@ -93,12 +108,17 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		if (logSession != LoggingEndpoint.ROOT_SESSION)
 		{
 			LoggingEndpoint.ROOT_SESSION.removeWebsocketSession(session);
-			logSession.logMessage(
-					new LogMessage(Level.FINER, "Session closed due to " + closeReason.getReasonPhrase()),
+			logSession.logMessage(new LogMessage(
+					Level.FINER, "Session closed due to " + closeReason.getReasonPhrase()),
 					session);
 		}
 	}
-	
+
+	/**
+	 * Sends a LogRecord to the relevant Websockets and stores it for later websockets to use.
+	 * @param logRecord the LogRecord to log.
+	 * @return true if the logRecord was successfully stored.
+	 */
 	public static boolean log(final LogRecord logRecord)
 	{
 		String httpSessionId = null;
@@ -113,21 +133,47 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		return LoggingEndpoint.getLogSession(username, httpSessionId).logMessage(logRecord);
 	}
 
+	/**
+	 * Clears out the LogSession for a particular httpSession.
+	 * @param httpSessionId the httpSession Id of the LogSession to clear
+	 * @return true if a session was removed
+	 */
 	public static boolean clearSession(final String httpSessionId)
 	{
 		return LoggingEndpoint.NON_USER_SESSIONS.remove(httpSessionId) != null;
 	}
 
+	/**
+	 * Clears out the LogSession for a particular user.
+	 * @param username the username of the LogSession to clear
+	 * @return true if a session was removed
+	 */
 	public static boolean clearUser(final String username)
 	{
 		return LoggingEndpoint.USER_SESSIONS.remove(username) != null;
 	}
 
+	/**
+	 * Gets the most relevant LogSession for this Endpoint.
+	 *
+	 * first gets a session based on username, else trys to get one based on httpSessionId.
+	 * if all else fails gets the Root session shared by everyone.
+	 * @return the most relevant LogSession
+	 */
 	private LogSession getLogSession()
 	{
 		return LoggingEndpoint.getLogSession(this.username, this.httpSessionId);
 	}
 
+	/**
+	 * Gets the most relevant LogSession.
+	 *
+	 * first gets a session based on username, else trys to get one based on httpSessionId.
+	 * if all else fails gets the Root session shared by everyone.
+	 * @param username a username to get or create
+	 * @param httpSessionId a heepSessionId to get or create
+	 * @return the most relevant LogSession
+	 */
 	private static LogSession getLogSession(final String username, final String httpSessionId)
 	{
 		LogSession result;
