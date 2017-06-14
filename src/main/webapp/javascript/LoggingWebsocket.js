@@ -16,21 +16,17 @@ var loggingWebsocket = {
 			loggingWebsocket.websocket.onmessage = function(message)
 			{
 				var jsonMessage = JSON.parse(message.data);
-				
-				if (jsonMessage.uuid)
+
+				if(Array.isArray(jsonMessage))
 				{
-					var xhttp;
-					if (window.XMLHttpRequest)
-			        {
-						xhttp = new XMLHttpRequest();
-					}
-			        else
-			        {
-						xhttp = new ActiveXObject('Microsoft.XMLHTTP');
-					}
-					xhttp.open('POST', 'WebsocketInitServlet', true);
-					xhttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-					xhttp.send('uuid=' + jsonMessage.uuid);
+					jsonMessage.forEach(function (message)
+					{
+						loggingWebsocket.logLocalOnly(message);
+                    });
+				}
+				else
+				{
+					loggingWebsocket.logLocalOnly(jsonMessage);
 				}
 			};
 		},
@@ -72,7 +68,7 @@ var loggingWebsocket = {
 		
 		log : function(logRecord)
 		{
-			logLocalOnly(logRecord);
+			loggingWebsocket.logLocalOnly(logRecord);
 			loggingWebsocket.websocket.send(JSON.stringify(logRecord));
 		},
 		
