@@ -1,5 +1,6 @@
 package com.logdyn.api.endpoints;
 
+import com.logdyn.api.filters.LoggingFilter;
 import com.logdyn.api.model.JsLevel;
 import com.logdyn.api.model.LogMessage;
 import org.json.JSONException;
@@ -119,13 +120,8 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	
 	public static void log(final LogRecord logRecord)
 	{
-		String httpSessionId = null;
-		final String username = null; //TODO get username from logRecord
-		
-		if (logRecord instanceof LogMessage)
-		{
-			httpSessionId = ((LogMessage) logRecord).getSessionId();
-		}
+		final String httpSessionId = LoggingFilter.currentSessionId();
+		final String username = LoggingFilter.currentUsername();
 		
 		LoggingEndpoint.getLogSession(username, httpSessionId).logMessage(logRecord);
 	}

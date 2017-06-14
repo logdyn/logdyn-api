@@ -1,24 +1,22 @@
 package com.logdyn.api.filters;
 
-import java.io.IOException;
-import java.util.logging.Level;
-
-import javax.servlet.Filter;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-
 import com.logdyn.api.endpoints.LoggingEndpoint;
 import com.logdyn.api.model.LogMessage;
+
+import javax.servlet.*;
+import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.security.Principal;
+import java.util.logging.Level;
 
 /**
  * Servlet Filter implementation class LoggingFilter
  */
 public class LoggingFilter implements Filter
 {
+	private static final ThreadLocal<String> username = new ThreadLocal<>();
+
+	private static final ThreadLocal<String> sessionId = new ThreadLocal<>();
 	/**
 	 * @see Filter#destroy()
 	 */
@@ -36,6 +34,7 @@ public class LoggingFilter implements Filter
 	{
 		try
 		{
+			LoggingFilter.setThreadLocals(request);
 			chain.doFilter(request, response);
 		}
 		catch (final Throwable e)
@@ -50,6 +49,10 @@ public class LoggingFilter implements Filter
 			}
 			throw e;
 		}
+		finally
+		{
+			LoggingFilter.clearThreadLocals();
+		}
 	}
 
 	/**
@@ -59,5 +62,35 @@ public class LoggingFilter implements Filter
 	public void init(final FilterConfig fConfig) throws ServletException
 	{
 		// NOOP
+	}
+
+	private static void setThreadLocals(final ServletRequest request)
+	{
+		if (request instanceof HttpServletRequest)
+		{
+			final HttpServletRequest httpRequest = (HttpServletRequest) request;
+			LoggingFilter.sessionId.set(httpRequest.getRequestedSessionId());
+			final Principal userPrinciple = httpRequest.getUserPrincipal();
+			if (null != userPrinciple)
+			{
+				LoggingFilter.username.set(userPrinciple.getName());
+			}
+		}
+	}
+
+	private static void clearThreadLocals()
+	{
+		LoggingFilter.username.remove();
+		LoggingFilter.sessionId.remove();
+	}
+
+	public static String currentUsername()
+	{
+		return LoggingFilter.username.get();
+	}
+
+	public static String currentSessionId()
+	{
+		return LoggingFilter.sessionId.get();
 	}
 }
