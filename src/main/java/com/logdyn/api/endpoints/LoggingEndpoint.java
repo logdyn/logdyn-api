@@ -1,6 +1,5 @@
 package com.logdyn.api.endpoints;
 
-import com.logdyn.api.filters.LoggingFilter;
 import com.logdyn.api.model.JsLevel;
 import com.logdyn.api.model.LogMessage;
 import org.json.JSONException;
@@ -93,10 +92,13 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	@Override
 	public void onMessage(final Reader reader)
 	{
-		final JSONObject jsonObject = new JSONObject(new JSONTokener(reader));
+		LoggingFilter.setUsername(this.username);
+		LoggingFilter.setSessionId(this.httpSessionId);
+
 		LogRecord logRecord;
 		try
 		{
+			final JSONObject jsonObject = new JSONObject(new JSONTokener(reader));
 			logRecord = new LogMessage(this.httpSessionId,
 					LoggingEndpoint.parseLevel(jsonObject),
 					jsonObject.getString(LoggingEndpoint.MESSAGE_LABEL),
@@ -108,6 +110,10 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			logRecord = new LogMessage(this.httpSessionId, Level.WARNING,
 					"Failed to parse Log Record from client");
 			this.getLogSession().logMessage(logRecord, null);
+		}
+		finally
+		{
+			LoggingFilter.clearThreadLocals();
 		}
 	}
 

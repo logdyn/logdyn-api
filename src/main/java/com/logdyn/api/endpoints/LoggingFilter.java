@@ -1,6 +1,5 @@
-package com.logdyn.api.filters;
+package com.logdyn.api.endpoints;
 
-import com.logdyn.api.endpoints.LoggingEndpoint;
 import com.logdyn.api.model.LogMessage;
 
 import javax.servlet.*;
@@ -69,16 +68,16 @@ public class LoggingFilter implements Filter
 		if (request instanceof HttpServletRequest)
 		{
 			final HttpServletRequest httpRequest = (HttpServletRequest) request;
-			LoggingFilter.sessionId.set(httpRequest.getRequestedSessionId());
+			LoggingFilter.setSessionId(httpRequest.getRequestedSessionId());
 			final Principal userPrinciple = httpRequest.getUserPrincipal();
 			if (null != userPrinciple)
 			{
-				LoggingFilter.username.set(userPrinciple.getName());
+				LoggingFilter.setUsername(userPrinciple.getName());
 			}
 		}
 	}
 
-	private static void clearThreadLocals()
+	static void clearThreadLocals()
 	{
 		LoggingFilter.username.remove();
 		LoggingFilter.sessionId.remove();
@@ -92,5 +91,15 @@ public class LoggingFilter implements Filter
 	public static String currentSessionId()
 	{
 		return LoggingFilter.sessionId.get();
+	}
+
+	static void setUsername(final String username)
+	{
+		LoggingFilter.username.set(username);
+	}
+
+	static void setSessionId(final String sessionId)
+	{
+		LoggingFilter.sessionId.set(sessionId);
 	}
 }
