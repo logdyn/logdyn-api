@@ -1,13 +1,14 @@
 package com.logdyn.api.endpoints;
 
+import com.logdyn.api.model.JsonFormatter;
 import com.logdyn.api.model.LogRecordComparator;
-import com.logdyn.api.model.LogRecordUtils;
 
 import javax.websocket.Session;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Future;
+import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
 
 class LogSession
@@ -16,6 +17,8 @@ class LogSession
 	private final Set<Session> sessions = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
 	/** The message history for this LogSession */
 	private final SortedSet<LogRecord> messages = new ConcurrentSkipListSet<>(LogRecordComparator.COMPARATOR);
+
+	private Formatter formatter;
 
 	/**
 	 * Adds a websocket session that will recieve LogRecords sent to this LogSession.
@@ -77,12 +80,17 @@ class LogSession
 			{
 				if (!session.equals(exclude))
 				{
-					session.getAsyncRemote().sendText(LogRecordUtils.toJSON(logRecord));
+					this.logMessageToSession(session, logRecord);
 				}
 			}
 		}
     	return result;
     }
+
+	public Future<Void> logMessageToSession(final Session session, final LogRecord logRecord)
+	{
+		return session.getAsyncRemote().sendText(this.formatter.format(logRecord));
+	}
 
 	/**
 	 * sends this LogSessions message history to the specified websocket session
@@ -104,7 +112,11 @@ class LogSession
 		}
 		if (!messages.isEmpty())
 		{
-			return session.getAsyncRemote().sendText(LogRecordUtils.toJSON(messages));
+			if (this.formatter instanceof JsonFormatter)
+			{
+				return session.getAsyncRemote().sendText(((JsonFormatter) this.formatter).format(messages));
+				//TODO make this work for any formatter
+			}
 		}
 		return null;
 	}
@@ -120,5 +132,11 @@ class LogSession
 		result  = this.messages.addAll(logSession.messages);
 		result |= this.sessions.addAll(logSession.sessions);
 		return result;
+	}
+
+	public LogSession setFormatter(final Formatter formatter)
+	{
+		this.formatter = formatter;
+		return this;
 	}
 }

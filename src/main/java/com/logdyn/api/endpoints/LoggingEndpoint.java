@@ -1,7 +1,7 @@
 package com.logdyn.api.endpoints;
 
+import com.logdyn.api.model.JsonFormatter;
 import com.logdyn.api.model.LogMessage;
-import com.logdyn.api.model.LogRecordUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -12,6 +12,7 @@ import java.io.Reader;
 import java.security.Principal;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
@@ -22,6 +23,8 @@ import java.util.logging.LogRecord;
  */
 public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Reader>
 {
+	private static final Formatter DEFAULT_FORMATTER = new JsonFormatter();
+
 	private static final Map<String, LogSession> USER_SESSIONS = new ConcurrentHashMap<>();
 	private static final Map<String, LogSession> NON_USER_SESSIONS = new ConcurrentHashMap<>();
 	private static final LogSession ROOT_SESSION = new LogSession();
@@ -66,7 +69,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 		LogRecord logRecord;
 		try
 		{
-			logRecord = LogRecordUtils.fromJSON(jsonObject, this.username, this.httpSessionId);
+			logRecord = JsonFormatter.fromJSON(jsonObject, this.username, this.httpSessionId);
 			this.getLogSession().logMessage(logRecord, this.websocketSession);
 		}
 		catch (JSONException e)
@@ -84,16 +87,17 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	public void onError(Session session, Throwable thr)
 	{
 		final LogRecord logRecord = new LogRecord(Level.SEVERE, thr.getLocalizedMessage());
+		final LogSession logSession = this.getLogSession();
 		try
 		{
-			session.getAsyncRemote().sendText(LogRecordUtils.toJSON(logRecord));
+			logSession.logMessageToSession(session, logRecord);
 		}
 		catch (Exception e)
 		{
 			//an error happened while sending a message through the errored websocket
 			//thats fine. just ignore it and send to the other websockets.
 		}
-		this.getLogSession().logMessage(logRecord, session);
+		logSession.logMessage(logRecord, session);
 		super.onError(session, thr);
 	}
 
@@ -119,7 +123,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 * @param logRecord the LogRecord to log.
 	 * @return true if the logRecord was successfully stored.
 	 */
-	public static boolean log(final LogRecord logRecord)
+	public static boolean log(final LogRecord logRecord, final Formatter formatter)
 	{
 		String httpSessionId = null;
 		String username = null;
@@ -129,8 +133,7 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 			httpSessionId = ((LogMessage) logRecord).getSessionId();
 			username = ((LogMessage) logRecord).getUsername();
 		}
-		
-		return LoggingEndpoint.getLogSession(username, httpSessionId).logMessage(logRecord);
+		return LoggingEndpoint.getLogSession(username, httpSessionId).setFormatter(formatter).logMessage(logRecord);
 	}
 
 	/**
