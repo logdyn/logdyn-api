@@ -1,12 +1,12 @@
 package com.logdyn.api.model;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.util.Collection;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * Created by Matt on 11/06/2017.
@@ -26,7 +26,7 @@ public class LogRecordUtils
 
     private static final Level DEFAULT_LEVEL = Level.FINE;
 
-    private static JSONObject ToJSONObject(final LogRecord logRecord)
+    private static JSONObject toJSONObject(final LogRecord logRecord)
     {
         return new JSONObject()
                 .put(LogRecordUtils.LEVEL_LABEL, logRecord.getLevel().getName())
@@ -36,7 +36,7 @@ public class LogRecordUtils
 
     public static String toJSON(final LogRecord logRecord)
     {
-        return LogRecordUtils.ToJSONObject(logRecord).toString();
+        return LogRecordUtils.toJSONObject(logRecord).toString();
     }
 
     public static String toJSON(final Collection<LogRecord> logRecords)
@@ -44,7 +44,7 @@ public class LogRecordUtils
         final JSONArray jsonArray = new JSONArray();
         for (final LogRecord logRecord : logRecords)
         {
-            jsonArray.put(LogRecordUtils.toJSON(logRecord));
+            jsonArray.put(LogRecordUtils.toJSONObject(logRecord));
         }
         return jsonArray.toString();
     }

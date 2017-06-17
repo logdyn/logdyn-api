@@ -1,19 +1,25 @@
 package com.logdyn.api.endpoints;
 
-import com.logdyn.api.model.LogMessage;
-import com.logdyn.api.model.LogRecordUtils;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
-
-import javax.servlet.http.HttpSession;
-import javax.websocket.*;
 import java.io.Reader;
 import java.security.Principal;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+
+import javax.servlet.http.HttpSession;
+import javax.websocket.CloseReason;
+import javax.websocket.Endpoint;
+import javax.websocket.EndpointConfig;
+import javax.websocket.MessageHandler;
+import javax.websocket.Session;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+
+import com.logdyn.api.model.LogMessage;
+import com.logdyn.api.model.LogRecordUtils;
 
 /**
  * Endpoint Class used to log messages and send them to the client
@@ -62,10 +68,14 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	@Override
 	public void onMessage(final Reader reader)
 	{
-		final JSONObject jsonObject = new JSONObject(new JSONTokener(reader));
+		LoggingFilter.setUsername(this.username);
+		LoggingFilter.setSessionId(this.httpSessionId);
+		
+		
 		LogRecord logRecord;
 		try
 		{
+			final JSONObject jsonObject = new JSONObject(new JSONTokener(reader));
 			logRecord = LogRecordUtils.fromJSON(jsonObject, this.username, this.httpSessionId);
 			this.getLogSession().logMessage(logRecord, this.websocketSession);
 		}
@@ -75,13 +85,17 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 					"Failed to parse Log Record from client", this.username, this.httpSessionId);
 			this.getLogSession().logMessage(logRecord, null);
 		}
+		finally
+		{
+			LoggingFilter.clearThreadLocals();
+		}
 	}
 
 	/**
 	 *  {@inheritDoc}
 	 */
 	@Override
-	public void onError(Session session, Throwable thr)
+	public void onError(final Session session, final Throwable thr)
 	{
 		final LogRecord logRecord = new LogRecord(Level.SEVERE, thr.getLocalizedMessage());
 		try
@@ -121,14 +135,8 @@ public class LoggingEndpoint extends Endpoint implements MessageHandler.Whole<Re
 	 */
 	public static boolean log(final LogRecord logRecord)
 	{
-		String httpSessionId = null;
-		String username = null;
-		
-		if (logRecord instanceof LogMessage)
-		{
-			httpSessionId = ((LogMessage) logRecord).getSessionId();
-			username = ((LogMessage) logRecord).getUsername();
-		}
+		final String httpSessionId = LoggingFilter.currentSessionId();
+		final String username = LoggingFilter.currentUsername();
 		
 		return LoggingEndpoint.getLogSession(username, httpSessionId).logMessage(logRecord);
 	}
