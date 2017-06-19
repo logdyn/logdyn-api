@@ -1,6 +1,4 @@
-package com.logdyn.api.endpoints;
-
-import com.logdyn.api.model.LogMessage;
+package com.logdyn.api;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;

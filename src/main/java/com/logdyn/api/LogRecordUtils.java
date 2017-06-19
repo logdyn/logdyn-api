@@ -1,4 +1,4 @@
-package com.logdyn.api.model;
+package com.logdyn.api;
 
 import java.util.Collection;
 import java.util.Objects;

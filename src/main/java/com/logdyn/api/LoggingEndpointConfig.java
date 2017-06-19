@@ -1,4 +1,4 @@
-package com.logdyn.api.endpoints;
+package com.logdyn.api;
 
 import javax.servlet.http.HttpSession;
 import javax.websocket.Decoder;

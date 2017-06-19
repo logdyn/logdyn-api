@@ -1,4 +1,4 @@
-package com.logdyn.api.endpoints;
+package com.logdyn.api;
 
 import java.io.Reader;
 import java.security.Principal;
@@ -17,9 +17,6 @@ import javax.websocket.Session;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-
-import com.logdyn.api.model.LogMessage;
-import com.logdyn.api.model.LogRecordUtils;
 
 /**
  * Endpoint Class used to log messages and send them to the client
