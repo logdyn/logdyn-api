@@ -9,7 +9,7 @@ public class LogdynHandler extends Handler
 	@Override
 	public void publish(LogRecord record)
 	{
-		LoggingEndpoint.log(record);
+		Logger.log(record);
 	}
 
 	@Override
