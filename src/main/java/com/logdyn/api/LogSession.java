@@ -1,5 +1,8 @@
 package com.logdyn.api;
 
+import com.logdyn.api.intergrations.LogFormatter;
+import com.logdyn.api.intergrations.ToStringFormatter;
+
 import javax.websocket.Session;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -7,15 +10,34 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Future;
 import java.util.logging.LogRecord;
 
-class LogSession
+class LogSession<R>
 {
 	/** the sessions that are part of this LogSession */
-	private final Set<Session> sessions = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
+	private final Set<Session> sessions;
 	/** The message history for this LogSession */
-	private final SortedSet<LogRecord> messages = new ConcurrentSkipListSet<>(LogRecordComparator.COMPARATOR);
+	private final SortedSet<R> messages;
+
+	private final LogFormatter<R> formatter;
+
+	public LogSession()
+	{
+		this(null);
+	}
+
+	public LogSession(final LogFormatter<R> formatter)
+	{
+		this(formatter, null);
+	}
+
+	public LogSession(final LogFormatter<R> formatter, final Comparator<R> comparator)
+	{
+		this.sessions = Collections.newSetFromMap(new ConcurrentHashMap<Session, Boolean>());
+		this.messages = new ConcurrentSkipListSet<>(comparator);
+		this.formatter = (null != formatter) ? formatter : new ToStringFormatter<R>();
+	}
 
 	/**
-	 * Adds a websocket session that will recieve LogRecords sent to this LogSession.
+	 * Adds a websocket session that will recieve Records sent to this LogSession.
 	 * @param session the session to add
 	 * @return true if the session was added as defined by {@link Collection#add}
 	 * @see Collection#add
@@ -49,24 +71,24 @@ class LogSession
 	/**
 	 * Stores the provided {@link LogRecord} and sends to the websocket sessions
 	 * contained by this LogSession.
-	 * @param logRecord the {@link LogRecord} to send to this LogSessions websockets.
+	 * @param record the {@link LogRecord} to send to this LogSessions websockets.
 	 * @return true if the logRecord was stored as defined by {@link Collection#add}
 	 */
-	public boolean logMessage(final LogRecord logRecord)
+	public boolean logMessage(final R record)
     {
-    	return this.logMessage(logRecord, null);
+    	return this.logMessage(record, null);
     }
 
 	/**
 	 * Stores the provided {@link LogRecord} and sends to the websocket sessions
 	 * contained by this LogSession, excluding the provided session.
-	 * @param logRecord the {@link LogRecord} to send to this LogSessions websockets.
+	 * @param record the {@link LogRecord} to send to this LogSessions websockets.
 	 * @param exclude a {@link javax.websocket.Session} to exclude or {@code null}
 	 * @return true if the logRecord was stored as defined by {@link Collection#add}
 	 */
-	public boolean logMessage(final LogRecord logRecord, final Session exclude)
+	public boolean logMessage(final R record, final Session exclude)
     {
-    	boolean result = this.messages.add(logRecord);
+    	boolean result = this.messages.add(record);
 
     	if (result)
     	{
@@ -74,7 +96,7 @@ class LogSession
 			{
 				if (!session.equals(exclude))
 				{
-					session.getAsyncRemote().sendText(LogRecordUtils.toJSON(logRecord));
+					session.getAsyncRemote().sendText(this.formatter.format(record));
 				}
 			}
 		}
@@ -89,7 +111,7 @@ class LogSession
 	 */
 	public Future<Void> sendMessages(final Session session, final LogSession otherSession)
 	{
-		final SortedSet<LogRecord> messages;
+		final SortedSet<R> messages;
 		if (null == otherSession || this == otherSession)
 		{
 			messages = this.messages;
@@ -101,7 +123,7 @@ class LogSession
 		}
 		if (!messages.isEmpty())
 		{
-			return session.getAsyncRemote().sendText(LogRecordUtils.toJSON(messages));
+			return session.getAsyncRemote().sendText(this.formatter.format(messages));
 		}
 		return null;
 	}
