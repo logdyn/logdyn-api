@@ -12,9 +12,6 @@ import java.util.logging.LogRecord;
  */
 public class LoggingFilter implements Filter
 {
-	private static final ThreadLocal<String> username = new ThreadLocal<>();
-
-	private static final ThreadLocal<String> sessionId = new ThreadLocal<>();
 	/**
 	 * @see Filter#destroy()
 	 */
@@ -37,22 +34,12 @@ public class LoggingFilter implements Filter
 		}
 		catch (final Throwable e)
 		{
-			LogRecord record;
-			if (request instanceof HttpServletRequest)
-			{
-				record = new LogMessage(Level.SEVERE, e.getLocalizedMessage(), (HttpServletRequest) request);
-			}
-			else
-			{
-				record = new LogRecord(Level.SEVERE, e.getLocalizedMessage());
-				record.setMillis(System.currentTimeMillis());
-			}
-			LoggingEndpoint.log(record);
+			Logger.log(new LogRecord(Level.SEVERE, e.getLocalizedMessage()));
 			throw e;
 		}
 		finally
 		{
-			LoggingFilter.clearThreadLocals();
+			Logger.clearThreadLocals();
 		}
 	}
 
@@ -74,58 +61,13 @@ public class LoggingFilter implements Filter
 		if (request instanceof HttpServletRequest)
 		{
 			final HttpServletRequest httpRequest = (HttpServletRequest) request;
-			LoggingFilter.setSessionId(httpRequest.getRequestedSessionId());
+			Logger.setCurrentSessionId(httpRequest.getRequestedSessionId());
 			final Principal userPrinciple = httpRequest.getUserPrincipal();
-			LoggingFilter.setUsername(null != userPrinciple ? userPrinciple.getName() : null);
+			Logger.setCurrentUsername(null != userPrinciple ? userPrinciple.getName() : null);
 		}
 		else
 		{
-			LoggingFilter.clearThreadLocals();
+			Logger.clearThreadLocals();
 		}
-	}
-
-	/**
-	 * removes current values for thread local variables.
-	 */
-	static void clearThreadLocals()
-	{
-		LoggingFilter.username.remove();
-		LoggingFilter.sessionId.remove();
-	}
-
-	/**
-	 * gets the username of the request currently being processed.
-	 * @return the username
-	 */
-	public static String currentUsername()
-	{
-		return LoggingFilter.username.get();
-	}
-
-	/**
-	 * gets the httpSessionId of the request currently being processed.
-	 * @return the session Id
-	 */
-	public static String currentSessionId()
-	{
-		return LoggingFilter.sessionId.get();
-	}
-
-	/**
-	 * sets the username of the request that is currently being processed.
-	 * @param username the username to set
-	 */
-	static void setUsername(final String username)
-	{
-		LoggingFilter.username.set(username);
-	}
-
-	/**
-	 * sets the httpSessionId of the request that is currently being processed.
-	 * @param sessionId the session ID to set
-	 */
-	static void setSessionId(final String sessionId)
-	{
-		LoggingFilter.sessionId.set(sessionId);
 	}
 }

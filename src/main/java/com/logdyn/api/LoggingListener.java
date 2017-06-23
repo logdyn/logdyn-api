@@ -22,6 +22,6 @@ public class LoggingListener implements HttpSessionListener
      */
     @Override
 	public void sessionDestroyed(final HttpSessionEvent se)  { 
-         LoggingEndpoint.clearSession(se.getSession().getId());
+         Logger.clearSession(se.getSession().getId());
     }
 }
