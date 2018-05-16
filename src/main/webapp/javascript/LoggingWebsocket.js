@@ -83,3 +83,4 @@ window.addEventListener('error', function(msg)
 	loggingWebsocket.log({level:'ERROR', message:(msg.message || msg)});
 });
 document.addEventListener('DOMContentLoaded', loggingWebsocket.init, false);
+window.addEventListener('beforeunload', loggingWebsocket.closeConnect, false);
