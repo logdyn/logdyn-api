@@ -56,12 +56,9 @@ public class LogRecordUtils
 
     public static LogRecord fromJSON(final JSONObject jsonObject, final String username, final String sessionId)
     {
-        return new LogMessage(
-                LogRecordUtils.parseLevel(jsonObject),
-                jsonObject.getString(LogRecordUtils.MESSAGE_LABEL),
-                Objects.toString(username, jsonObject.optString(LogRecordUtils.USERNAME_LABEL, null)),
-                Objects.toString(sessionId, jsonObject.optString(LogRecordUtils.SESSION_ID_LABEL, null)),
-                jsonObject.optLong(LogRecordUtils.TIMESTAMP_LABEL, System.currentTimeMillis()));
+        LogRecord record = new LogRecord(LogRecordUtils.parseLevel(jsonObject), jsonObject.getString(LogRecordUtils.MESSAGE_LABEL));
+        record.setMillis(jsonObject.optLong(LogRecordUtils.TIMESTAMP_LABEL, System.currentTimeMillis()));
+        return record;
     }
 
     private static Level parseLevel(final JSONObject jsonObject)

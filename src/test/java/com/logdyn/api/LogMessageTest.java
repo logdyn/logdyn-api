@@ -3,8 +3,6 @@ package com.logdyn.api;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.logdyn.api.LogMessage;
-
 import java.util.logging.Level;
 
 public class LogMessageTest

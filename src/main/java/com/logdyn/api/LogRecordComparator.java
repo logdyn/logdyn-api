@@ -35,22 +35,11 @@ public class LogRecordComparator implements Comparator<LogRecord>
         if (result == 0)
         {
             result = LevelComparator.compareTo(o1.getLevel(), o2.getLevel());
-            if (result == 0)
-            {
-                final String o1Username = o1 instanceof LogMessage ? ((LogMessage) o1).getUsername() : null;
-                final String o2Username = o2 instanceof LogMessage ? ((LogMessage) o2).getUsername() : null;
-                result = NullComparator.compareTo(o1Username, o2Username);
+
                 if (result == 0)
                 {
-                    final String o1SessionId = o1 instanceof LogMessage ? ((LogMessage) o1).getSessionId() : null;
-                    final String o2SessionId = o2 instanceof LogMessage ? ((LogMessage) o2).getSessionId() : null;
-                    result = NullComparator.compareTo(o1SessionId, o2SessionId);
-                    if (result == 0)
-                    {
-                        result = o1.getMessage().compareTo(o2.getMessage());
-                    }
+                    result = o1.getMessage().compareTo(o2.getMessage());
                 }
-            }
         }
         return result;
     }
